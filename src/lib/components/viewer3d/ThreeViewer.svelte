@@ -1770,16 +1770,6 @@
     markSceneDirty();
   }
 
-  function takeScreenshot() {
-    if (!renderer || !scene || !camera) return;
-    renderer.render(scene, camera);
-    const dataUrl = renderer.domElement.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = 'floorplan-3d.png';
-    link.href = dataUrl;
-    link.click();
-  }
-
   onMount(() => {
     init();
     animate();
@@ -1858,24 +1848,6 @@
     <!-- Multi-Floor Stacking Toggle -->
 
     <!-- Top-Down View Button -->
-
-    <!-- Wall Transparency Toggle -->
-
-    <!-- Edit Mode Toggle -->
-
-
-    <!-- 3D Screenshot Button -->
-    <button
-      onclick={takeScreenshot}
-      class="p-2 rounded-lg bg-black/70 text-white hover:bg-black/80 transition-colors"
-      title="Save 3D Screenshot"
-      aria-label="Save 3D Screenshot"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-    </button>
   </div><!-- end 3D toolbar row -->
 
   {#if cameraPlacementMode && !cameraPlaced}

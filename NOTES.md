@@ -4,12 +4,16 @@
 -> supongo que la herramienta para dibujar paredes es para dibujar paredes internas
 
 
+
+- sacar capacidad para dibujar columnas?
+
 - change walls into a default thickness of 8
 
 
 
 FIXED
 
+- limitar el plano a una única planta.
 - remove room tags in 3d view
 - settings -> AI, settings -> appearance, 
 
