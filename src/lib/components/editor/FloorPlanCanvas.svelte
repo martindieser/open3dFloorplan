@@ -1969,7 +1969,10 @@
 
   function onMouseDown(e: MouseEvent) {
     markDirty();
-    if (e.button === 1 || (e.button === 0 && (spaceDown || $panMode || (e.shiftKey && currentTool === 'select')))) {
+    // Pan if: middle mouse OR (left mouse AND (space down OR panMode is ON AND tool is select OR shift-drag in select))
+    const isPanningRequest = e.button === 1 || (e.button === 0 && (spaceDown || ($panMode && currentTool === 'select') || (e.shiftKey && currentTool === 'select')));
+    
+    if (isPanningRequest) {
       isPanning = true;
       panStartX = e.clientX;
       panStartY = e.clientY;
@@ -3205,7 +3208,7 @@
   }
 
   let cursorStyle = $derived(
-    spaceDown || isPanning || $panMode || (shiftDown && currentTool === 'select') ? 'grab' :
+    spaceDown || isPanning || ($panMode && currentTool === 'select') || (shiftDown && currentTool === 'select') ? 'grab' :
     draggingFurnitureId ? 'move' :
     draggingRoomId ? 'move' :
     draggingMultiSelect ? 'move' :
