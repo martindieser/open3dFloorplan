@@ -1,13 +1,19 @@
 
-- settings -> AI, settings -> appearance, 
+- diferencia entre poder dibujar paredes libremente, y hacerlo usando un spawn de rooms directamente,
+
+-> supongo que la herramienta para dibujar paredes es para dibujar paredes internas
+
 
 - change walls into a default thickness of 8
 
-- remove import image for flo
 
 
 FIXED
 
+- remove room tags in 3d view
+- settings -> AI, settings -> appearance, 
+
+- remove import image for flo
 - sacar add dimensiones, measure, imports (no del todo tho)
 
 - sacar area summary, version history

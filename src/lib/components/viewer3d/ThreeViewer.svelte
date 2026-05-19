@@ -7,7 +7,6 @@
   import { projectSettings, formatArea } from '$lib/stores/settings';
   import * as THREE from 'three';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-  import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
   import MaterialPicker from './MaterialPicker.svelte';
   import { getCatalogItem, furnitureCatalog, furnitureCategories } from '$lib/utils/furnitureCatalog';
   import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
@@ -27,7 +26,6 @@
   // Dirty flag — only render when scene changes or camera moves
   let sceneDirty = true;
   function markSceneDirty() { sceneDirty = true; }
-  let pointerControls: PointerLockControls;
   let animId: number;
   let currentFloor: Floor | null = null;
   let savedRooms: Room[] = [];
@@ -50,25 +48,6 @@
   // Multi-floor stacking
   let showAllFloors = $state(false);
   const FLOOR_HEIGHT = 300; // cm — wall height + slab thickness
-
-  // Walkthrough mode
-  let walkthroughMode = $state(false);
-  let moveForward = false;
-  let moveBackward = false;
-  let moveLeft = false;
-  let moveRight = false;
-  let lookLeft = false;
-  let lookRight = false;
-  let lookUp = false;
-  let lookDown = false;
-  let isShiftHeld = false;
-  const LOOK_SPEED = 2.0; // radians/s
-  let canJump = false;
-  let velocity = new THREE.Vector3();
-  const direction = new THREE.Vector3();
-  let moveSpeed = $state(800); // cm/s
-  let sprintSpeed = $state(1600); // cm/s
-  let eyeHeight = $state(160); // cm
 
   // Light references
   let ambientLight: THREE.AmbientLight;
@@ -641,7 +620,6 @@
       const dx = e.clientX - pointerDownPos.x;
       const dy = e.clientY - pointerDownPos.y;
       if (Math.hypot(dx, dy) > 5) return;
-      if (walkthroughMode) return;
 
       const rect = renderer.domElement.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -763,20 +741,6 @@
       } else if (!hit) {
         hoveredMesh = null;
         renderer.domElement.style.cursor = editMode ? 'crosshair' : '';
-      }
-    });
-
-    // Initialize PointerLock controls for walkthrough mode
-    pointerControls = new PointerLockControls(camera, renderer.domElement);
-    
-    // Keyboard event listeners for walkthrough
-    document.addEventListener('keydown', onKeyDown, false);
-    document.addEventListener('keyup', onKeyUp, false);
-    
-    // ESC key to exit walkthrough mode
-    pointerControls.addEventListener('unlock', () => {
-      if (walkthroughMode) {
-        exitWalkthroughMode();
       }
     });
 
@@ -1738,7 +1702,7 @@
 
   function onKeyDown(event: KeyboardEvent) {
     // ESC exits edit mode
-    if (event.code === 'Escape' && editMode && !walkthroughMode) {
+    if (event.code === 'Escape' && editMode) {
       if (furniturePlacementMode) {
         furniturePlacementMode = false;
         furniturePickerOpen = false;
@@ -1755,40 +1719,9 @@
       selectedElementId.set(null);
       return;
     }
-    if (!walkthroughMode) return;
-    
-    switch (event.code) {
-      // Arrows = move
-      case 'ArrowUp': moveForward = true; break;
-      case 'ArrowDown': moveBackward = true; break;
-      case 'ArrowLeft': moveLeft = true; break;
-      case 'ArrowRight': moveRight = true; break;
-      // WASD = look
-      case 'KeyW': lookUp = true; break;
-      case 'KeyS': lookDown = true; break;
-      case 'KeyA': lookLeft = true; break;
-      case 'KeyD': lookRight = true; break;
-      case 'ShiftLeft':
-      case 'ShiftRight': isShiftHeld = true; break;
-      case 'Escape': exitWalkthroughMode(); break;
-    }
   }
 
   function onKeyUp(event: KeyboardEvent) {
-    if (!walkthroughMode) return;
-    
-    switch (event.code) {
-      case 'ArrowUp': moveForward = false; break;
-      case 'ArrowDown': moveBackward = false; break;
-      case 'ArrowLeft': moveLeft = false; break;
-      case 'ArrowRight': moveRight = false; break;
-      case 'KeyW': lookUp = false; break;
-      case 'KeyS': lookDown = false; break;
-      case 'KeyA': lookLeft = false; break;
-      case 'KeyD': lookRight = false; break;
-      case 'ShiftLeft':
-      case 'ShiftRight': isShiftHeld = false; break;
-    }
   }
   
   function toggleWallTransparency() {
@@ -1816,109 +1749,14 @@
     controls.update();
   }
 
-  function toggleWalkthroughMode() {
-    if (walkthroughMode) {
-      exitWalkthroughMode();
-    } else {
-      enterWalkthroughMode();
-    }
-  }
-  
-  function enterWalkthroughMode() {
-    walkthroughMode = true;
-    controls.enabled = false;
-    
-    // Position camera at eye height in center of floor plan or largest room
-    if (currentFloor) {
-      const rooms = detectRooms(currentFloor.walls);
-      let startPos = { x: 0, y: eyeHeight, z: 0 };
-      
-      if (rooms.length > 0) {
-        // Find largest room and position camera at its center
-        let largestRoom = rooms[0];
-        let largestArea = 0;
-        
-        for (const room of rooms) {
-          if (room.area > largestArea) {
-            largestArea = room.area;
-            largestRoom = room;
-          }
-        }
-        
-        const poly = getRoomPolygon(largestRoom, currentFloor.walls);
-        if (poly.length > 0) {
-          const centroid = roomCentroid(poly);
-          startPos = { x: centroid.x, y: eyeHeight, z: centroid.y };
-        }
-      } else if (currentFloor.walls.length > 0) {
-        // No rooms, use center of floor plan
-        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-        for (const w of currentFloor.walls) {
-          for (const p of [w.start, w.end]) {
-            minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-            minZ = Math.min(minZ, p.y); maxZ = Math.max(maxZ, p.y);
-          }
-        }
-        startPos = { x: (minX + maxX) / 2, y: eyeHeight, z: (minZ + maxZ) / 2 };
-      }
-      
-      camera.position.set(startPos.x, startPos.y, startPos.z);
-      camera.lookAt(startPos.x, startPos.y, startPos.z - 100); // Look forward initially
-    }
-    
-    pointerControls.lock();
-  }
-  
-  function exitWalkthroughMode() {
-    walkthroughMode = false;
-    controls.enabled = true;
-    velocity.set(0, 0, 0);
-    moveForward = moveBackward = moveLeft = moveRight = false;
-    lookLeft = lookRight = lookUp = lookDown = false;
-    
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
-    }
-  }
-
   function animate() {
     animId = requestAnimationFrame(animate);
     
-    if (walkthroughMode) {
-      const delta = 0.016; // Approximate 60fps
-      const speed = isShiftHeld ? sprintSpeed : moveSpeed;
-      
-      velocity.x -= velocity.x * 10.0 * delta;
-      velocity.z -= velocity.z * 10.0 * delta;
-      
-      direction.z = Number(moveForward) - Number(moveBackward);
-      direction.x = Number(moveRight) - Number(moveLeft);
-      direction.normalize();
-      
-      if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-      if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
-      
-      pointerControls.moveRight(-velocity.x * delta);
-      pointerControls.moveForward(-velocity.z * delta);
-      camera.position.y = eyeHeight;
-
-      if (lookLeft || lookRight) {
-        const yaw = ((lookLeft ? 1 : 0) - (lookRight ? 1 : 0)) * LOOK_SPEED * delta;
-        camera.rotation.y += yaw;
-      }
-      if (lookUp || lookDown) {
-        const pitch = ((lookUp ? 1 : 0) - (lookDown ? 1 : 0)) * LOOK_SPEED * delta;
-        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x + pitch));
-      }
-      // Always render in walkthrough mode (camera constantly moving)
+    // controls.update() may fire 'change' event (which sets sceneDirty)
+    controls.update();
+    if (sceneDirty) {
+      sceneDirty = false;
       renderer.render(scene, camera);
-    } else {
-      // controls.update() may fire 'change' event (which sets sceneDirty)
-      controls.update();
-      if (sceneDirty) {
-        sceneDirty = false;
-        renderer.render(scene, camera);
-      }
     }
   }
 
@@ -2037,31 +1875,6 @@
         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
         <circle cx="12" cy="13" r="4"/>
       </svg>
-    </button>
-
-    <!-- Walkthrough Mode Toggle Button -->
-    <button
-      onclick={toggleWalkthroughMode}
-      class="p-2 rounded-lg bg-black/70 text-white hover:bg-black/80 transition-colors"
-      title={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
-      aria-label={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
-  >
-    {#if walkthroughMode}
-      <!-- Exit/Eye closed icon -->
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-        <line x1="1" y1="1" x2="23" y2="23"/>
-      </svg>
-    {:else}
-      <!-- Walking person icon -->
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="4" r="2"/>
-        <path d="M10 16v6"/>
-        <path d="M14 16v6"/>
-        <path d="M12 6h2l4 4"/>
-        <path d="M10 14l2-2 1 2"/>
-      </svg>
-    {/if}
     </button>
   </div><!-- end 3D toolbar row -->
 
@@ -2247,54 +2060,7 @@
     </div>
   {/if}
 
-  {#if walkthroughMode}
-    <!-- Crosshair -->
-    <div class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-      <div class="w-4 h-4">
-        <svg width="16" height="16" viewBox="0 0 16 16" class="text-white drop-shadow-lg">
-          <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="1"/>
-          <line x1="8" y1="10" x2="8" y2="14" stroke="currentColor" stroke-width="1"/>
-          <line x1="2" y1="8" x2="6" y2="8" stroke="currentColor" stroke-width="1"/>
-          <line x1="10" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1"/>
-        </svg>
-      </div>
-    </div>
-    
-    <!-- Controls Panel -->
-    <div class="absolute top-4 left-4 z-10 bg-black/70 text-white text-xs rounded-lg backdrop-blur-sm p-3 space-y-2 min-w-[180px]">
-      <div class="font-semibold text-white/90 mb-1">Walkthrough Controls</div>
-      <label class="flex items-center justify-between gap-2">
-        <span class="text-white/70">Eye Height</span>
-        <div class="flex items-center gap-1">
-          <input type="range" min="80" max="220" bind:value={eyeHeight} class="w-16 h-1 accent-blue-400" />
-          <span class="w-10 text-right">{eyeHeight}cm</span>
-        </div>
-      </label>
-      <label class="flex items-center justify-between gap-2">
-        <span class="text-white/70">Walk Speed</span>
-        <div class="flex items-center gap-1">
-          <input type="range" min="100" max="1000" step="50" bind:value={moveSpeed} class="w-16 h-1 accent-blue-400" />
-          <span class="w-10 text-right">{moveSpeed}</span>
-        </div>
-      </label>
-      <label class="flex items-center justify-between gap-2">
-        <span class="text-white/70">Sprint Speed</span>
-        <div class="flex items-center gap-1">
-          <input type="range" min="200" max="2000" step="100" bind:value={sprintSpeed} class="w-16 h-1 accent-blue-400" />
-          <span class="w-10 text-right">{sprintSpeed}</span>
-        </div>
-      </label>
-    </div>
-
-    <!-- Help Text -->
-    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-      <div class="bg-black/70 text-white text-sm px-4 py-2 rounded-lg backdrop-blur-sm">
-        WASD to look • Arrows to move • Mouse to look • Shift to sprint • ESC to exit
-      </div>
-    </div>
-  {/if}
-
-  {#if editMode && !walkthroughMode}
+  {#if editMode}
     <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
       <div class="bg-blue-600/90 text-white text-sm px-4 py-2 rounded-lg backdrop-blur-sm flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
