@@ -1438,41 +1438,13 @@
       }
       uvAttr.needsUpdate = true;
 
-      // Use room's floor material or fallback to color coding
-      let material: THREE.MeshStandardMaterial;
-      if (room.floorTexture) {
-        const floorMat = getMaterial(room.floorTexture);
-        const floorCanvas = getFloorTextureCanvas(room.floorTexture);
-        if (floorCanvas) {
-          const tex = new THREE.CanvasTexture(floorCanvas);
-          tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-          // Tile every 200cm — now UVs are 0-1, so repeat = room size / tile size
-          const tileSizeCm = 200;
-          tex.repeat.set(roomW / tileSizeCm, roomH / tileSizeCm);
-          material = new THREE.MeshStandardMaterial({
-            map: tex,
-            roughness: floorMat.roughness ?? 0.8,
-            transparent: false,
-            opacity: 1.0
-          });
-        } else {
-          material = new THREE.MeshStandardMaterial({ 
-            color: new THREE.Color(floorMat.color), 
-            roughness: floorMat.roughness ?? 0.8,
-            transparent: false,
-            opacity: 1.0
-          });
-        }
-      } else {
-        // Fallback to old color system for rooms without specific materials
-        const color = FALLBACK_ROOM_COLORS[ri % FALLBACK_ROOM_COLORS.length];
-        material = new THREE.MeshStandardMaterial({ 
-          color, 
-          roughness: 0.9, 
-          transparent: true, 
-          opacity: 0.5 
-        });
-      }
+      // Always use a transparent material for rooms as per user request
+      const material = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, 
+        roughness: 0.9, 
+        transparent: true, 
+        opacity: 0.1 
+      });
       
       const mesh = new THREE.Mesh(geo, material);
       // Rotate to lie on XZ plane, slightly above base floor
