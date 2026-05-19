@@ -247,26 +247,21 @@
     >{projectName}</button>
   {/if}
 
-  <div class="h-5 w-px bg-white/20"></div>
+  {#if floors.length > 1}
+    <div class="h-5 w-px bg-white/20"></div>
 
-  <!-- Floor selector as buttons -->
-  <div class="flex items-center gap-1">
-    {#each floors as fl}
-      <button
-        class="px-2 py-0.5 text-xs rounded transition-colors {fl.id === activeFloorId ? 'bg-white text-slate-800 font-semibold' : 'text-white/80 hover:bg-white/10'}"
-        onclick={() => setActiveFloor(fl.id)}
-        ondblclick={() => onRemoveFloor(fl.id)}
-        title={fl.id === activeFloorId ? 'Active floor (dbl-click to remove)' : 'Click to switch, dbl-click to remove'}
-      >{fl.name}</button>
-    {/each}
-    <button
-      onclick={onAddFloor}
-      class="text-white/80 hover:text-white text-xs hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors"
-      title="Add Floor"
-      aria-label="Add Floor"
-    >+</button>
-    <span class="text-white/40 text-[10px] ml-1">{floors.length}F</span>
-  </div>
+    <!-- Floor selector as buttons -->
+    <div class="flex items-center gap-1">
+      {#each floors as fl}
+        <button
+          class="px-2 py-0.5 text-xs rounded transition-colors {fl.id === activeFloorId ? 'bg-white text-slate-800 font-semibold' : 'text-white/80 hover:bg-white/10'}"
+          onclick={() => setActiveFloor(fl.id)}
+          ondblclick={() => onRemoveFloor(fl.id)}
+          title={fl.id === activeFloorId ? 'Active floor (dbl-click to remove)' : 'Click to switch, dbl-click to remove'}
+        >{fl.name}</button>
+      {/each}
+    </div>
+  {/if}
 
   <div class="flex-1"></div>
 
