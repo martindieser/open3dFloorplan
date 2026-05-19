@@ -70,13 +70,6 @@
   let sprintSpeed = $state(1600); // cm/s
   let eyeHeight = $state(160); // cm
 
-  // Lighting controls state
-  let lightingPanelOpen = $state(false);
-  let sunAzimuth = $state(135);      // 0-360 degrees
-  let sunElevation = $state(60);     // 0-90 degrees
-  let ambientIntensity = $state(0.35);
-  let timeOfDay = $state<'morning' | 'noon' | 'evening' | 'night' | null>(null);
-
   // Light references
   let ambientLight: THREE.AmbientLight;
   let hemiLight: THREE.HemisphereLight;
@@ -527,67 +520,6 @@
   let ghostGroup: THREE.Group | null = null;
   let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // y=0 plane
   let ghostIntersection = new THREE.Vector3();
-
-  const TIME_PRESETS = {
-    morning: { azimuth: 90, elevation: 25, ambient: 0.3, sunColor: 0xffe0a0, sunIntensity: 0.8, skyTop: '#f5a86c', skyMid: '#fdd89b', skyHorizon: '#ffe8c0', hemiSky: '#fdd89b', hemiGround: '#9b8060' },
-    noon:    { azimuth: 180, elevation: 80, ambient: 0.45, sunColor: 0xffffff, sunIntensity: 1.2, skyTop: '#3a7bd5', skyMid: '#87ceeb', skyHorizon: '#c8e8f8', hemiSky: '#87ceeb', hemiGround: '#8b7355' },
-    evening: { azimuth: 270, elevation: 15, ambient: 0.2, sunColor: 0xff8040, sunIntensity: 0.6, skyTop: '#2d1b69', skyMid: '#c84e3c', skyHorizon: '#f4a460', hemiSky: '#c84e3c', hemiGround: '#4a3520' },
-    night:   { azimuth: 0, elevation: 5, ambient: 0.08, sunColor: 0x8899cc, sunIntensity: 0.15, skyTop: '#0a0a2e', skyMid: '#141432', skyHorizon: '#1a1a3e', hemiSky: '#141432', hemiGround: '#0a0a15' },
-  };
-
-  function updateSunPosition() {
-    if (!sunLight) return;
-    const azRad = (sunAzimuth * Math.PI) / 180;
-    const elRad = (sunElevation * Math.PI) / 180;
-    const dist = 1500;
-    sunLight.position.set(
-      dist * Math.cos(elRad) * Math.sin(azRad),
-      dist * Math.sin(elRad),
-      dist * Math.cos(elRad) * Math.cos(azRad)
-    );
-    markSceneDirty();
-  }
-
-  function updateAmbientIntensity() {
-    if (ambientLight) ambientLight.intensity = ambientIntensity;
-    markSceneDirty();
-  }
-
-  function updateSkyGradient(topColor: string, midColor: string, horizonColor: string) {
-    if (!skyCanvas || !skyTexture) return;
-    const cx = skyCanvas.getContext('2d')!;
-    const grad = cx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, topColor);
-    grad.addColorStop(0.4, midColor);
-    grad.addColorStop(0.55, horizonColor);
-    grad.addColorStop(0.7, '#d4cfc4');
-    grad.addColorStop(1.0, '#b8b0a0');
-    cx.fillStyle = grad;
-    cx.fillRect(0, 0, 4, 512);
-    skyTexture.needsUpdate = true;
-  }
-
-  function applyTimePreset(preset: 'morning' | 'noon' | 'evening' | 'night') {
-    const p = TIME_PRESETS[preset];
-    timeOfDay = preset;
-    sunAzimuth = p.azimuth;
-    sunElevation = p.elevation;
-    ambientIntensity = p.ambient;
-    updateSunPosition();
-    updateAmbientIntensity();
-    if (sunLight) {
-      sunLight.color.set(p.sunColor);
-      sunLight.intensity = p.sunIntensity;
-    }
-    if (hemiLight) {
-      hemiLight.color.set(p.hemiSky);
-      hemiLight.groundColor.set(p.hemiGround);
-      hemiLight.intensity = preset === 'night' ? 0.1 : 0.4;
-    }
-    if (fillLight) fillLight.intensity = preset === 'night' ? 0.05 : 0.4;
-    if (rimLight) rimLight.intensity = preset === 'night' ? 0.05 : 0.25;
-    updateSkyGradient(p.skyTop, p.skyMid, p.skyHorizon);
-  }
 
   const WALL_THICKNESS = 15;
   const BASEBOARD_HEIGHT = 8;
@@ -2154,84 +2086,13 @@
   <!-- 3D Toolbar Row -->
   <div class="absolute top-4 right-4 z-50 flex gap-1.5">
     <!-- Multi-Floor Stacking Toggle -->
-    <button
-      onclick={() => { showAllFloors = !showAllFloors; rebuildScene(); }}
-      class="p-2 rounded-lg transition-colors {showAllFloors ? 'bg-purple-600 text-white ring-2 ring-purple-300' : 'bg-black/70 text-white hover:bg-black/80'}"
-      title={showAllFloors ? 'Active Floor Only' : 'Show All Floors Stacked'}
-      aria-label={showAllFloors ? 'Active Floor Only' : 'Show All Floors Stacked'}
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="4" y="14" width="16" height="4" rx="1"/>
-        <rect x="4" y="8" width="16" height="4" rx="1" opacity="0.6"/>
-        <rect x="4" y="2" width="16" height="4" rx="1" opacity="0.3"/>
-      </svg>
-    </button>
 
     <!-- Top-Down View Button -->
-    <button
-      onclick={viewTopDown}
-      class="p-2 rounded-lg bg-black/70 text-white hover:bg-black/80 transition-colors"
-      title="Top-Down View"
-      aria-label="Top-Down View"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="2" x2="12" y2="6"/>
-        <line x1="12" y1="18" x2="12" y2="22"/>
-        <line x1="2" y1="12" x2="6" y2="12"/>
-        <line x1="18" y1="12" x2="22" y2="12"/>
-      </svg>
-    </button>
 
     <!-- Wall Transparency Toggle -->
-    <button
-      onclick={toggleWallTransparency}
-      class="p-2 rounded-lg transition-colors {wallsTransparent ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
-      title={wallsTransparent ? 'Show Solid Walls' : 'Make Walls Transparent'}
-      aria-label={wallsTransparent ? 'Show Solid Walls' : 'Make Walls Transparent'}
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" opacity={wallsTransparent ? 0.3 : 1}/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="12" y1="3" x2="12" y2="21"/>
-      </svg>
-    </button>
 
     <!-- Edit Mode Toggle -->
-    <button
-      onclick={() => { editMode = !editMode; if (editMode && walkthroughMode) { exitWalkthroughMode(); } if (!editMode) { selectedElementId.set(null); materialPickerWall = null; materialPickerPos = null; } }}
-      class="p-2 rounded-lg transition-colors {editMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
-      title={editMode ? 'Exit Edit Mode' : 'Edit Mode — click to select walls & change materials'}
-      aria-label={editMode ? 'Exit Edit Mode' : 'Edit Mode'}
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </svg>
-    </button>
 
-    <!-- Interior Camera Button -->
-    <button
-      onclick={() => {
-        if (cameraPlacementMode) {
-          cameraPlacementMode = false;
-        } else {
-          cameraPlacementMode = true;
-          cameraPlaced = false;
-          editMode = true;
-          if (walkthroughMode) exitWalkthroughMode();
-          furniturePlacementMode = false;
-        }
-      }}
-      class="p-2 rounded-lg transition-colors {cameraPlacementMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
-      title={cameraPlacementMode ? 'Cancel camera placement (click floor to place)' : 'Place Interior Camera — click floor to position, click again to aim'}
-      aria-label="Place Interior Camera"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 7l-7 5 7 5V7z"/>
-        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-      </svg>
-    </button>
 
     <!-- 3D Screenshot Button -->
     <button
@@ -2565,70 +2426,5 @@
   {/if}
 
   <!-- MaterialPicker removed — wall materials editable via Properties panel -->
-
-  <!-- Lighting Controls Toggle Button -->
-  <button
-    onclick={() => { lightingPanelOpen = !lightingPanelOpen; }}
-    class="absolute bottom-4 left-4 z-50 p-2 rounded-lg transition-colors {lightingPanelOpen ? 'bg-amber-500 text-white ring-2 ring-amber-300' : 'bg-black/70 text-white hover:bg-black/80'}"
-    title="Lighting Controls"
-    aria-label="Lighting Controls"
-  >
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="5"/>
-      <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-      <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-    </svg>
-  </button>
-
-  <!-- Lighting Controls Panel -->
-  {#if lightingPanelOpen}
-    <div class="absolute bottom-14 left-4 z-50 bg-black/80 text-white text-xs rounded-lg backdrop-blur-sm p-3 space-y-3 min-w-[220px] select-none">
-      <div class="font-semibold text-white/90 text-sm flex items-center gap-1.5">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>
-        Lighting Controls
-      </div>
-
-      <!-- Time of Day Presets -->
-      <div class="space-y-1">
-        <span class="text-white/60 text-[10px] uppercase tracking-wide">Time of Day</span>
-        <div class="flex gap-1">
-          {#each (['morning', 'noon', 'evening', 'night'] as const) as preset}
-            <button
-              onclick={() => applyTimePreset(preset)}
-              class="flex-1 px-1.5 py-1 rounded text-[11px] transition-colors {timeOfDay === preset ? 'bg-amber-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'}"
-            >
-              {preset === 'morning' ? '🌅' : preset === 'noon' ? '☀️' : preset === 'evening' ? '🌇' : '🌙'}
-              <span class="block capitalize">{preset}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Sun Position -->
-      <label class="block space-y-0.5">
-        <div class="flex justify-between text-white/60">
-          <span>Sun Position</span><span>{sunAzimuth}°</span>
-        </div>
-        <input type="range" min="0" max="360" bind:value={sunAzimuth} oninput={() => { timeOfDay = null; updateSunPosition(); }} class="w-full h-1 accent-amber-400" />
-      </label>
-
-      <!-- Sun Elevation -->
-      <label class="block space-y-0.5">
-        <div class="flex justify-between text-white/60">
-          <span>Sun Elevation</span><span>{sunElevation}°</span>
-        </div>
-        <input type="range" min="0" max="90" bind:value={sunElevation} oninput={() => { timeOfDay = null; updateSunPosition(); }} class="w-full h-1 accent-amber-400" />
-      </label>
-
-      <!-- Ambient Intensity -->
-      <label class="block space-y-0.5">
-        <div class="flex justify-between text-white/60">
-          <span>Ambient Light</span><span>{Math.round(ambientIntensity * 100)}%</span>
-        </div>
-        <input type="range" min="0" max="100" value={Math.round(ambientIntensity * 100)} oninput={(e) => { ambientIntensity = parseInt(e.currentTarget.value) / 100; timeOfDay = null; updateAmbientIntensity(); }} class="w-full h-1 accent-blue-400" />
-      </label>
-    </div>
-  {/if}
 </div>
+
