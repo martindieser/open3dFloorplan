@@ -14,6 +14,7 @@ export interface WallColor {
 }
 
 export const floorMaterials: FloorMaterial[] = [
+  { id: 'transparent', name: 'Transparent', color: 'transparent', roughness: 1.0 },
   { id: 'light-oak', name: 'Light Oak', color: '#ddc9a8', pattern: 'hardwood', roughness: 0.8 },
   { id: 'walnut', name: 'Walnut', color: '#8b6f47', pattern: 'hardwood', roughness: 0.8 },
   { id: 'bamboo', name: 'Bamboo', color: '#e6d3a7', pattern: 'bamboo', roughness: 0.7 },

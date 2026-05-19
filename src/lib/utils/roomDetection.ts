@@ -228,7 +228,7 @@ export function detectRooms(walls: Wall[]): Room[] {
         id: `room-${roomCount}-${Date.now()}`,
         name: `Room ${roomCount}`,
         walls: uniqueWalls,
-        floorTexture: 'hardwood',
+        floorTexture: 'transparent',
         area: Math.round(area / 10000 * 100) / 100, // cm² to m²
       });
     }

@@ -1280,6 +1280,7 @@ const ROOM_FILLS_DEFAULT = [
 ];
 
 export function getRoomFill(room: Room, index: number): string {
+  if (room.floorTexture === 'transparent') return 'transparent';
   if (room.color) {
     const hex = room.color.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
@@ -1299,6 +1300,7 @@ const ROOM_FLOOR_PATTERN: Record<string, FloorPatternType> = {
 
 export function drawRoomFloorPattern(cs: CanvasState, room: Room, screenPoly: { x: number; y: number }[]): void {
   const { ctx, zoom } = cs;
+  if (room.floorTexture === 'transparent') return;
   if (room.floorTexture) {
     const texCanvas = getFloorTextureCanvas(room.floorTexture);
     if (texCanvas) {

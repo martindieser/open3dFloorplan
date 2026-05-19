@@ -302,6 +302,7 @@
     'vinyl': '/textures/floor-vinyl.jpg',
   };
   const textureGroups = [
+    { label: '✨ Basic', ids: ['transparent'] },
     { label: '🪵 Wood', ids: ['light-oak', 'walnut', 'bamboo', 'laminate'] },
     { label: '🔲 Tile', ids: ['ceramic-white', 'ceramic-gray', 'porcelain', 'vinyl'] },
     { label: '🪨 Stone', ids: ['marble-white', 'marble-dark', 'concrete', 'slate'] },
@@ -696,7 +697,17 @@
         <p class="text-sm text-gray-700">{formatArea(selectedRoom.area, settings.units)}</p>
       </div>
       <!-- Room Color -->
-      <div>
+      <div class="mb-4">
+        <label class="flex items-center gap-2 mb-3 cursor-pointer group">
+          <input 
+            type="checkbox" 
+            checked={selectedRoom.floorTexture === 'transparent'} 
+            onchange={(e) => onRoomFloor((e.target as HTMLInputElement).checked ? 'transparent' : 'light-oak')}
+            class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span class="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">Transparent Floor</span>
+        </label>
+
         <span class="text-xs text-gray-500 mb-1.5 block">Room Color</span>
         <div class="grid grid-cols-5 gap-1.5 mb-2">
           {#each roomColorPresets as preset}

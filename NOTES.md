@@ -10,8 +10,13 @@
 - change walls into a default thickness of 8
 
 
+- sacar menu o dropdown del boton derecho que es horrible
 
 FIXED
+
+- piso trasparente
+
+- sacar exportar y autosaved y snap grid sacado y por defecto siempre en true
 
 - limitar el plano a una única planta.
 - remove room tags in 3d view
