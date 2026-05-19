@@ -94,7 +94,6 @@
         <span class="ctx-icon">⬇️</span> Send to Back
       </button>
       <div class="ctx-sep"></div>
-      <div class="ctx-sep"></div>
       <button class="ctx-item" role="menuitem" onclick={() => clickItem('toggle-lock')}>
         <span class="ctx-icon">{targetFurniture?.locked ? '🔓' : '🔒'}</span> {targetFurniture?.locked ? 'Unlock' : 'Lock'}
       </button>
@@ -161,10 +160,6 @@
       </button>
       <button class="ctx-item" role="menuitem" onclick={() => clickItem('add-wall')}>
         <span class="ctx-icon">🧱</span> Add Wall
-      </button>
-      <div class="ctx-sep"></div>
-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('zoom-to-fit')}>
-        <span class="ctx-icon">🔍</span> Zoom to Fit
       </button>
     {/if}
   </div>

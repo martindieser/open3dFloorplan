@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, setBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, createGroup, ungroupElements, findGroupForElement } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, setBackgroundImage, canvasZoom, canvasCamX, canvasCamY, triggerZoomToFit, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, createGroup, ungroupElements, findGroupForElement } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine, Measurement, Annotation, TextAnnotation } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -36,6 +36,7 @@
   $effect(() => { canvasZoom.set(zoom); });
   $effect(() => { canvasCamX.set(camX); });
   $effect(() => { canvasCamY.set(camY); });
+  triggerZoomToFit.subscribe(v => { if (v > 0) zoomToFit(); });
 
   // Wall drawing state
   let wallStart: Point | null = $state(null);
@@ -3547,83 +3548,6 @@
       </div>
     </div>
   {/if}
-  <!-- Mini-map -->
-  {#if showMinimap && currentFloor && currentFloor.walls.length > 0}
-    <canvas
-      bind:this={minimapCanvas}
-      width="180"
-      height="120"
-      class="absolute bottom-10 right-2 rounded-lg shadow-lg border border-gray-300 cursor-crosshair bg-white"
-      style="z-index: 15;"
-      onclick={onMinimapClick}
-    ></canvas>
-  {/if}
-  <div class="absolute bottom-2 right-2 bg-white/80 rounded px-2 py-1 text-xs text-gray-500 flex gap-3">
-    {#if detectedRooms.length > 0}
-      <span>{detectedRooms.length} room{detectedRooms.length !== 1 ? 's' : ''}</span>
-      <span>{formatArea(detectedRooms.reduce((s, r) => s + r.area, 0), $projectSettings.units)}</span>
-      <span class="text-gray-300">|</span>
-    {/if}
-    {#if currentFloor}
-      <span>{currentFloor.walls.length} wall{currentFloor.walls.length !== 1 ? 's' : ''}</span>
-      {#if currentFloor.doors.length > 0}
-        <span>{currentFloor.doors.length} door{currentFloor.doors.length !== 1 ? 's' : ''}</span>
-      {/if}
-      {#if currentFloor.windows.length > 0}
-        <span>{currentFloor.windows.length} window{currentFloor.windows.length !== 1 ? 's' : ''}</span>
-      {/if}
-      {#if currentFloor.furniture.length > 0}
-        <span>{currentFloor.furniture.length} object{currentFloor.furniture.length !== 1 ? 's' : ''}</span>
-      {/if}
-      <span class="text-gray-300">|</span>
-    {/if}
-    {#if currentSelectedIds.size > 1}
-      <span class="text-blue-600 font-medium">{currentSelectedIds.size} selected</span>
-      <span class="text-gray-300">|</span>
-    {/if}
-    <span>Zoom: {Math.round(zoom * 100)}%</span>
-    <button class="hover:text-gray-700" onclick={() => zoomToFit()} title="Zoom to Fit (F)">⊞ Fit</button>
-    <button class="hover:text-gray-700" onclick={() => showGrid = !showGrid} title="Toggle Grid (G)">
-      {showGrid ? '▦' : '▢'} Grid
-    </button>
-    <button class="hover:text-gray-700" onclick={() => projectSettings.update(s => ({ ...s, snapToGrid: !s.snapToGrid }))} title="Toggle Snap to Grid (S)">
-      {currentSnapToGrid ? '🧲' : '↔'} Snap
-    </button>
-    <button class="hover:text-gray-700" onclick={() => layerVisibility.update(v => ({ ...v, furniture: !v.furniture }))} title="Toggle Furniture">
-      {showFurniture ? '🪑' : '👻'} Furniture
-    </button>
-    <button class="hover:text-gray-700" onclick={() => showLayerPanel = !showLayerPanel} title="Layer Visibility">
-      🗂 Layers
-    </button>
-    <button class="hover:text-gray-700" onclick={() => showRulers = !showRulers} title="Toggle Rulers">
-      {showRulers ? '📏' : '📐'} Rulers
-    </button>
-    <button class="hover:text-gray-700" onclick={() => showMinimap = !showMinimap} title="Toggle Mini-map">
-      {showMinimap ? '🗺' : '🗺'} Map
-    </button>
-  </div>
-  <!-- Layer Visibility Panel -->
-  {#if showLayerPanel}
-    <div class="absolute bottom-12 right-2 z-20 bg-white rounded-lg shadow-lg border border-gray-200 p-3 text-xs min-w-[160px]">
-      <div class="font-semibold text-gray-700 mb-2">Layers</div>
-      {#each [['walls','Walls'],['doors','Doors'],['windows','Windows'],['furniture','Furniture'],['stairs','Stairs'],['columns','Columns'],['guides','Guides'],['measurements','Measurements']] as [key, label]}
-        <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
-          <input type="checkbox" checked={(layerVis as Record<string, boolean>)[key]} onchange={() => layerVisibility.update(v => ({ ...v, [key]: !(v as Record<string, boolean>)[key] }))} class="accent-blue-500" />
-          <span>{label}</span>
-        </label>
-      {/each}
-      <hr class="my-1 border-gray-100" />
-      <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
-        <input type="checkbox" bind:checked={showRoomLabels} class="accent-blue-500" />
-        <span>Room Labels</span>
-      </label>
-      <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
-        <input type="checkbox" bind:checked={showDimensions} class="accent-blue-500" />
-        <span>Dimensions</span>
-      </label>
-    </div>
-  {/if}
-
   <!-- Contextual Toolbar -->
   {#if (currentSelectedId || currentSelectedIds.size > 0) && currentFloor && currentTool === 'select'}
     {@const el = (() => {
@@ -3750,46 +3674,6 @@
       {annotationStart ? 'Click second point to create annotation' : 'Click first point'} · N to exit · Esc to cancel
     </div>
   {/if}
-
-  <!-- Zoom Controls (bottom-left) -->
-  <div class="absolute bottom-3 left-3 z-20 flex items-center gap-1 bg-white rounded-lg shadow-lg border border-gray-200 px-1 py-0.5">
-    <button
-      class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 hover:text-gray-800 font-bold text-lg"
-      title="Zoom Out (−)"
-      aria-label="Zoom out"
-      onclick={() => {
-        const newZoom = Math.max(0.1, zoom * 0.8);
-        // Zoom towards canvas center
-        const worldCX = (width / 2 - width / 2) / zoom + camX;
-        const worldCY = (height / 2 - height / 2) / zoom + camY;
-        camX = worldCX - (width / 2 - width / 2) / newZoom;
-        camY = worldCY - (height / 2 - height / 2) / newZoom;
-        zoom = newZoom;
-      }}
-    >−</button>
-    <button
-      class="min-w-[3.5rem] h-7 flex items-center justify-center rounded hover:bg-gray-100 text-xs font-medium text-gray-600 hover:text-gray-800 tabular-nums"
-      title="Reset to 100%"
-      aria-label="Zoom to 100%"
-      onclick={() => { zoom = 1; }}
-    >{Math.round(zoom * 100)}%</button>
-    <button
-      class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 hover:text-gray-800 font-bold text-lg"
-      title="Zoom In (+)"
-      aria-label="Zoom in"
-      onclick={() => {
-        const newZoom = Math.min(10, zoom * 1.25);
-        zoom = newZoom;
-      }}
-    >+</button>
-    <div class="w-px h-5 bg-gray-200"></div>
-    <button
-      class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 text-sm"
-      title="Zoom to Fit (F)"
-      aria-label="Zoom to fit"
-      onclick={() => zoomToFit()}
-    >⊞</button>
-  </div>
 
   <!-- Context Menu -->
   <ContextMenu

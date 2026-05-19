@@ -825,4 +825,5 @@ export const canvasZoom = writable<number>(1);
 // Camera position stores for 2D canvas — used to compute viewport center
 export const canvasCamX = writable<number>(0);
 export const canvasCamY = writable<number>(0);
+export const triggerZoomToFit = writable<number>(0); // Increment this to trigger zoom to fit
 
