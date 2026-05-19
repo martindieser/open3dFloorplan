@@ -99,19 +99,6 @@
     </button>
   </div>
   {/if}
-
-  <!-- Furniture visibility toggle -->
-  <button
-    onclick={() => layerVisibility.update(v => ({ ...v, furniture: !v.furniture }))}
-    class="p-1.5 rounded transition-colors {$layerVisibility.furniture ? 'text-white bg-white/20' : 'text-white/40 hover:text-white/70 hover:bg-white/10'}"
-    title="Toggle Furniture"
-    aria-label="Toggle Furniture"
-  >
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="12" width="20" height="8" rx="1"/><path d="M4 12V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5"/><line x1="12" y1="12" x2="12" y2="20"/>
-    </svg>
-  </button>
-
   <div class="h-5 w-px bg-white/20"></div>
 
   <!-- 2D/3D pill toggle -->
