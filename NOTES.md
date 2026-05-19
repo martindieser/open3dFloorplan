@@ -10,11 +10,20 @@
 - change walls into a default thickness of 8
 
 
-- sacar menu o dropdown del boton derecho que es horrible
 
+- si se esta en pan mode no s pueden poner objetos??
+
+
+- drag & drop de room templates no funr
+
+================================================
 FIXED
 
-- piso trasparente
+- sacar menu o dropdown del boton derecho que es horrible
+
+- sacar toggle de furtinure en el plano (porque en el modo 3D no servia)
+
+- piso trasparente siempre, no hay más colores de pisos
 
 - sacar exportar y autosaved y snap grid sacado y por defecto siempre en true
 

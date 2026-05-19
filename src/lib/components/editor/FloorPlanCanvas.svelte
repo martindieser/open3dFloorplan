@@ -9,6 +9,7 @@
   import { drawFurnitureIcon } from '$lib/utils/furnitureIcons';
   import { handleGlobalShortcut } from '$lib/utils/shortcuts';
   import { roomPresets, placePreset } from '$lib/utils/roomPresets';
+  import { roomTemplates, placeRoomTemplate } from '$lib/utils/roomTemplates';
   import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
   import { projectSettings, formatLength, formatArea } from '$lib/stores/settings';
   import type { ProjectSettings } from '$lib/stores/settings';
@@ -3186,6 +3187,15 @@
       if (preset) {
         placePreset(preset, pos);
         selectedTool.set('select');
+      }
+    } else if (itemType === 'room-template') {
+      const template = roomTemplates.find(t => t.name === itemId);
+      if (template) {
+        const preset = roomPresets.find(p => p.id === template.presetId);
+        if (preset) {
+          placeRoomTemplate(preset, pos, template);
+          selectedTool.set('select');
+        }
       }
     }
   }
