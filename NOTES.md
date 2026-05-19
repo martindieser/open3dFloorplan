@@ -8,4 +8,6 @@
 
 - change walls into a default thickness of 8
 
+- remove import image for flo
+
 - zoom btn is in two places at same time, wtf
