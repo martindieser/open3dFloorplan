@@ -1,5 +1,5 @@
 
-- sacar lo de add dimesion, measure, settings -> AI, settings -> appearance, 
+- settings -> AI, settings -> appearance, 
 
 - change walls into a default thickness of 8
 
@@ -7,6 +7,8 @@
 
 
 FIXED
+
+- sacar add dimensiones, measure, imports (no del todo tho)
 
 - sacar area summary, version history
 
