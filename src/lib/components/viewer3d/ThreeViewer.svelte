@@ -143,10 +143,8 @@
     offRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
     offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
     if (cameraHelper) cameraHelper.visible = false;
-    setSpritesVisible(false);
     offRenderer.render(scene!, interiorCamera!);
     if (cameraHelper) cameraHelper.visible = true;
-    setSpritesVisible(true);
     const dataUrl = offRenderer.domElement.toDataURL('image/png');
     offRenderer.dispose();
     return dataUrl;
@@ -409,7 +407,7 @@
     if (xray) {
       xrayOriginals.clear();
       wallGroup.traverse((obj) => {
-        if (obj instanceof THREE.Mesh && !(obj instanceof THREE.Sprite)) {
+        if (obj instanceof THREE.Mesh) {
           const mat = obj.material as THREE.MeshStandardMaterial;
           if (!mat) return;
           xrayOriginals.set(obj, { transparent: mat.transparent, opacity: mat.opacity, depthWrite: mat.depthWrite });
@@ -432,14 +430,6 @@
     }
   }
 
-  /** Hide/show all label sprites in the scene (room names, etc.) */
-  function setSpritesVisible(visible: boolean) {
-    if (!scene) return;
-    scene.traverse((obj) => {
-      if (obj instanceof THREE.Sprite) obj.visible = visible;
-    });
-  }
-
   function captureInteriorPhoto() {
     if (!scene || !interiorCamera) return;
     updateInteriorCamera();
@@ -455,15 +445,13 @@
     offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
     offRenderer.toneMappingExposure = 1.0;
 
-    // Hide camera marker and room labels during capture
+    // Hide camera marker during capture
     if (cameraHelper) cameraHelper.visible = false;
-    setSpritesVisible(false);
     if (cameraXrayWalls) setWallsXray(true);
 
     offRenderer.render(scene, interiorCamera);
 
     if (cameraHelper) cameraHelper.visible = true;
-    setSpritesVisible(true);
     if (cameraXrayWalls) setWallsXray(false);
 
     const dataUrl = offRenderer.domElement.toDataURL('image/png');
@@ -493,11 +481,9 @@
     cameraPreviewRenderer.setPixelRatio(1);
 
     if (cameraHelper) cameraHelper.visible = false;
-    setSpritesVisible(false);
     if (cameraXrayWalls) setWallsXray(true);
     cameraPreviewRenderer.render(scene, interiorCamera);
     if (cameraHelper) cameraHelper.visible = true;
-    setSpritesVisible(true);
     if (cameraXrayWalls) setWallsXray(false);
     cameraPreviewDirty = false;
   }
@@ -1531,29 +1517,6 @@
       mesh.receiveShadow = true;
       wallGroup.add(mesh);
 
-      // Floating room label using sprite
-      const centroid = roomCentroid(poly);
-      const canvas = document.createElement('canvas');
-      canvas.width = 256; canvas.height = 64;
-      const ctx2 = canvas.getContext('2d')!;
-      ctx2.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx2.roundRect(0, 0, 256, 64, 8);
-      ctx2.fill();
-      ctx2.fillStyle = '#ffffff';
-      ctx2.font = 'bold 22px sans-serif';
-      ctx2.textAlign = 'center';
-      ctx2.fillText(room.name, 128, 26);
-      ctx2.font = '16px sans-serif';
-      ctx2.fillStyle = '#d1d5db';
-      ctx2.fillText(formatArea(room.area, get(projectSettings).units), 128, 50);
-
-      const tex = new THREE.CanvasTexture(canvas);
-      const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-      const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.set(centroid.x, 30, centroid.y);
-      sprite.scale.set(150, 40, 1);
-      wallGroup.add(sprite);
-
       // Ceiling — render at wall height, visible from below
       const defaultWallH = floor.walls.length > 0 ? floor.walls[0].height : 260;
       const ceilMat = new THREE.MeshStandardMaterial({
@@ -1595,23 +1558,17 @@
         // We need to offset all current wallGroup children
         const yOffset = i * FLOOR_HEIGHT;
         if (yOffset !== 0) {
-          // Move existing children up
           for (const child of [...wallGroup.children]) {
             child.position.y += yOffset;
           }
         }
-        // Add floor label
-        addFloorLabel(i, floor.name || (i === 0 ? 'Ground Floor' : `Floor ${i}`), i * FLOOR_HEIGHT);
         continue;
       }
-      
+
       // Build non-active floor into a temporary group, then merge with transparency
       const tempGroup = new THREE.Group();
       buildFloorIntoGroup(floor, tempGroup, i * FLOOR_HEIGHT, 0.35);
-      
-      // Add floor label
-      addFloorLabel(i, floor.name || (i === 0 ? 'Ground Floor' : `Floor ${i}`), i * FLOOR_HEIGHT);
-      
+
       // Move children from temp group to wallGroup
       while (tempGroup.children.length > 0) {
         const child = tempGroup.children[0];
@@ -1622,31 +1579,6 @@
     
     // Re-center camera to encompass all floors
     autoCenterCameraAllFloors(project.floors.length);
-  }
-  
-  function addFloorLabel(floorIndex: number, name: string, yOffset: number) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256; canvas.height = 48;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.roundRect(0, 0, 256, 48, 8);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(name, 128, 32);
-    
-    const tex = new THREE.CanvasTexture(canvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-    const sprite = new THREE.Sprite(spriteMat);
-    
-    // Position label to the side of the building
-    const box = new THREE.Box3().setFromObject(wallGroup);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    sprite.position.set(center.x - size.x / 2 - 200, yOffset + 130, center.z);
-    sprite.scale.set(200, 40, 1);
-    wallGroup.add(sprite);
   }
   
   /** Build a single floor's walls/doors/windows into a group at a Y offset with optional transparency */
