@@ -8,14 +8,9 @@
   import { exportDXF, exportDWG } from '$lib/utils/cadExport';
   import { importRoomPlan } from '$lib/utils/roomplanImport';
   import SettingsDialog from './SettingsDialog.svelte';
-  import AreaSummaryPanel from '$lib/components/sidebar/AreaSummaryPanel.svelte';
   import { saveState, lastSavedAt, manualSave, initAutoSave } from '$lib/stores/saveStatus';
-  import { initVersionHistory, snapshotOnAction } from '$lib/stores/versionHistory';
-  import VersionHistoryPanel from './VersionHistoryPanel.svelte';
 
   let settingsOpen = $state(false);
-  let areaOpen = $state(false);
-  let versionHistoryOpen = $state(false);
 
   let projectName = $state('');
   let mode = $state<'2d' | '3d'>('2d');
@@ -156,7 +151,6 @@
 
   onMount(() => {
     initAutoSave();
-    initVersionHistory();
 
     // Update relative timestamp every 15s
     const interval = setInterval(updateLastSavedText, 15000);
@@ -168,8 +162,6 @@
     }
     function handleKeydown(e: KeyboardEvent) {
       if (exportOpen) exportOpen = false;
-      if (e.key === 'Escape' && versionHistoryOpen) versionHistoryOpen = false;
-      if (e.key === 'Escape' && areaOpen) areaOpen = false;
     }
     document.addEventListener('click', handleClickOutside, true);
     document.addEventListener('keydown', handleKeydown, true);
@@ -347,26 +339,6 @@
     >3D</button>
   </div>
 
-  <!-- Version History button -->
-  <button
-    onclick={() => versionHistoryOpen = true}
-    class="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors"
-    title="Version History"
-    aria-label="Version History"
-  >
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-  </button>
-
-  <!-- Area summary button -->
-  <button
-    onclick={() => areaOpen = true}
-    class="px-2 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors"
-    title="Area Summary"
-    aria-label="Area Summary"
-  >
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
-  </button>
-
   <!-- Settings button -->
   <button
     onclick={() => settingsOpen = true}
@@ -454,20 +426,3 @@
 </div>
 
 <SettingsDialog bind:open={settingsOpen} />
-<VersionHistoryPanel bind:open={versionHistoryOpen} />
-
-{#if areaOpen}
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick={() => areaOpen = false} onkeydown={(e) => { if (e.key === 'Escape') areaOpen = false; }}>
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="bg-white rounded-xl shadow-2xl w-[420px] max-h-[80vh] overflow-hidden" onclick={(e) => e.stopPropagation()}>
-    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-      <h2 class="text-base font-semibold text-gray-800">📐 Area Summary</h2>
-      <button onclick={() => areaOpen = false} class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-    </div>
-    <div class="overflow-y-auto max-h-[calc(80vh-52px)] p-1">
-      <AreaSummaryPanel />
-    </div>
-  </div>
-</div>
-{/if}
