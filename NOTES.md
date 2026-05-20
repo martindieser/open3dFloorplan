@@ -30,6 +30,8 @@ BUGS
 AGREGADOS
 ================================================
 
+- previsualiacion de puertas y ventanas al ponerlas en mobile
+
 - flatten en el topbar del mobile layout
 
 - touch screen que funcione en mobile (ham mode y select mode), si es un item te permite moverlo, sino es para moverte en el plano 

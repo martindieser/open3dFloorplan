@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { selectedTool, placingFurnitureId, placingDoorType, placingWindowType, placingStair, addStair, placingColumn, placingColumnShape, activeFloor, setBackgroundImage, canvasCamX, canvasCamY } from '$lib/stores/project';
+  import { selectedTool, placingFurnitureId, placingDoorType, placingWindowType, placingStair, addStair, placingColumn, placingColumnShape, activeFloor, setBackgroundImage, canvasCamX, canvasCamY, selectedElementId } from '$lib/stores/project';
   import type { Tool } from '$lib/stores/project';
   import type { Door, Window as Win } from '$lib/models/types';
   import { roomPresets, placePreset } from '$lib/utils/roomPresets';
@@ -54,6 +54,10 @@
     const nextTool = current === tool ? 'select' : tool;
     selectedTool.set(nextTool);
     placingFurnitureId.set(null);
+    placingStair.set(false);
+    placingColumn.set(false);
+    draggingFromLibrary.set(null);
+    selectedElementId.set(null);
     panMode.set(nextTool === 'select');
   }
 
@@ -77,6 +81,10 @@
   function onFurnitureClick(item: FurnitureDef) {
     selectedTool.set('furniture');
     placingFurnitureId.set(item.id);
+    placingStair.set(false);
+    placingColumn.set(false);
+    draggingFromLibrary.set(null);
+    selectedElementId.set(null);
     addToRecent(item.id);
   }
 
@@ -175,20 +183,34 @@
   let isPlacingColumn = $state(false);
   placingColumn.subscribe(v => { isPlacingColumn = v; });
 
-  function onStairClick() {
-    let cx = 0, cy = 0;
-    canvasCamX.subscribe(v => { cx = v; })();
-    canvasCamY.subscribe(v => { cy = v; })();
-    addStair({ x: cx, y: cy });
-    if ($isMobile) isBottomPanelOpen.set(false);
+  let placingColShape: 'round' | 'square' = 'round';
+  placingColumnShape.subscribe(v => { placingColShape = v; });
+
+  function onPlaceStair() {
+    const next = !isPlacingStair;
+    placingStair.set(next);
+    if (next) {
+      selectedTool.set('select');
+      placingFurnitureId.set(null);
+      placingColumn.set(false);
+      draggingFromLibrary.set(null);
+      selectedElementId.set(null);
+    }
+    if ($isMobile && next) isBottomPanelOpen.set(false);
   }
 
-  function onColumnClick(shape: 'round' | 'square') {
-    let cx = 0, cy = 0;
-    canvasCamX.subscribe(v => { cx = v; })();
-    canvasCamY.subscribe(v => { cy = v; })();
-    addColumn({ x: cx, y: cy }, shape);
-    if ($isMobile) isBottomPanelOpen.set(false);
+  function onPlaceColumn(shape: 'round' | 'square') {
+    const next = !isPlacingColumn || placingColShape !== shape;
+    placingColumn.set(next);
+    placingColumnShape.set(shape);
+    if (next) {
+      selectedTool.set('select');
+      placingFurnitureId.set(null);
+      placingStair.set(false);
+      draggingFromLibrary.set(null);
+      selectedElementId.set(null);
+    }
+    if ($isMobile && next) isBottomPanelOpen.set(false);
   }
 
   function onImportImage() {
