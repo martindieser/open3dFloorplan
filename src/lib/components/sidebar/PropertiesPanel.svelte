@@ -309,38 +309,47 @@
     { label: '🧶 Carpet', ids: ['carpet-beige', 'carpet-gray'] },
   ];
 
+  import { isMobile } from '$lib/stores/ui';
+
+  // ... (rest of imports)
+
   let hasSelection = $derived(!!selectedWall || !!selectedDoor || !!selectedWindow || !!selectedFurniture || !!selectedRoom || !!selectedStair || !!selectedColumn || !!selectedTextAnnotation || (!is3D && hasBgImage));
 </script>
 
-<div class="{is3D ? 'w-80' : 'w-64'} shrink-0 bg-white border-l border-gray-200 flex flex-col overflow-y-auto p-3 fixed right-0 z-40 shadow-lg" class:hidden={!hasSelection} style="top: 48px; bottom: 36px;">
+<div 
+  class="flex flex-col overflow-y-auto p-4 bg-white {hasSelection ? '' : 'hidden'} 
+  {$isMobile ? 'w-full' : (is3D ? 'w-80' : 'w-64') + ' fixed right-0 top-[48px] bottom-[36px] border-l border-gray-200 z-40 shadow-lg'}"
+>
   {#if selectedWall}
-    <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-      <span class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs">▭</span>
+    <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+      <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-xs">▭</div>
       Wall Properties
     </h3>
-    <div class="space-y-3">
+    <div class="space-y-4">
       <label class="block">
-        <span class="text-xs text-gray-500">Length ({unitLabel()})</span>
-        <input type="number" value={displayValue(wallLength)} onchange={onWallLength} min="1" class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Length ({unitLabel()})</span>
+        <input type="number" value={displayValue(wallLength)} onchange={onWallLength} min="1" class="w-full h-11 px-3 mt-1 bg-gray-50 border-transparent rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all" />
       </label>
-      <label class="block">
-        <span class="text-xs text-gray-500">Thickness ({unitLabel()})</span>
-        <input type="number" value={displayValue(selectedWall.thickness)} oninput={onWallThickness} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </label>
-      <label class="block">
-        <span class="text-xs text-gray-500">Height ({unitLabel()})</span>
-        <input type="number" value={displayValue(selectedWall.height)} oninput={onWallHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </label>
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500">Curved</span>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Thickness</span>
+          <input type="number" value={displayValue(selectedWall.thickness)} oninput={onWallThickness} class="w-full h-11 px-3 mt-1 bg-gray-50 border-transparent rounded-xl text-sm" />
+        </label>
+        <label class="block">
+          <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Height</span>
+          <input type="number" value={displayValue(selectedWall.height)} oninput={onWallHeight} class="w-full h-11 px-3 mt-1 bg-gray-50 border-transparent rounded-xl text-sm" />
+        </label>
+      </div>
+
+      <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+        <span class="text-sm font-medium text-gray-700">Curved Wall</span>
         <button
-          class="px-2 py-0.5 text-xs rounded {selectedWall.curvePoint ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-gray-100 text-gray-500 border border-gray-200'}"
+          class="w-14 h-8 rounded-full transition-colors relative {selectedWall.curvePoint ? 'bg-blue-600' : 'bg-gray-300'}"
           onclick={() => {
             if (selectedWall) {
               if (selectedWall.curvePoint) {
                 updateWall(selectedWall.id, { curvePoint: undefined });
               } else {
-                // Set curve point to offset midpoint
                 const mx = (selectedWall.start.x + selectedWall.end.x) / 2;
                 const my = (selectedWall.start.y + selectedWall.end.y) / 2;
                 const dx = selectedWall.end.x - selectedWall.start.x;
@@ -351,7 +360,7 @@
             }
           }}
         >
-          {selectedWall.curvePoint ? '◆ On' : '◇ Off'}
+          <div class="absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-sm transition-transform {selectedWall.curvePoint ? 'translate-x-6' : 'translate-x-0'}"></div>
         </button>
       </div>
       <!-- Wall Material Tabs: Interior / Exterior -->

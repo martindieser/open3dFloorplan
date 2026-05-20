@@ -11,9 +11,20 @@
   import { importRoomPlan, extractRoomJsonFromZip, ORTHO_VERSION } from '$lib/utils/roomplanImport';
   import { currentProject, loadProject, importFloorIntoCurrentProject, createDefaultProject } from '$lib/stores/project';
   import type { Project } from '$lib/models/types';
+  import { isMobile, activeMobileTab } from '$lib/stores/ui';
 
   // AreaSummaryPanel moved to top bar dialog
   let activeTab = $state<'draw' | 'rooms' | 'objects'>('draw');
+  
+  // Sync local activeTab with mobile store if on mobile
+  $effect(() => {
+    if ($isMobile) {
+      if ($activeMobileTab === 'build') activeTab = 'draw';
+      else if ($activeMobileTab === 'rooms') activeTab = 'rooms';
+      else if ($activeMobileTab === 'objects') activeTab = 'objects';
+    }
+  });
+
   let constructionOpen = $state(true);
   let selectedCategory = $state<string>('All');
   let thumbsReady = $state(0); // increment to trigger reactivity
@@ -34,9 +45,20 @@
   let optOrthogonal = $state(true);
   let optMergeDistance = $state(15);
 
+  import { panMode } from '$lib/stores/project';
+
   function setTool(tool: Tool) {
-    selectedTool.set(tool);
-    placingFurnitureId.set(null);
+    let current: Tool = 'select';
+    selectedTool.subscribe(v => current = v)();
+
+    if (tool === 'select' && current === 'select') {
+      // Toggle pan mode if already in select mode
+      panMode.update(v => !v);
+    } else {
+      selectedTool.set(tool);
+      placingFurnitureId.set(null);
+      panMode.set(false); // Disable pan mode when switching to other tools
+    }
   }
 
   let currentTool = $state<Tool>('select');
@@ -304,8 +326,9 @@
   };
 </script>
 
-<div class="w-64 bg-white border-r border-gray-200 flex flex-col h-full overflow-hidden">
-  <!-- Tabs -->
+<div class="flex flex-col h-full overflow-hidden {$isMobile ? 'bg-white' : 'w-64 border-r border-gray-200'}">
+  <!-- Tabs - Hidden on Mobile (Mobile uses Bottom Navigation) -->
+  {#if !$isMobile}
   <div class="flex border-b border-gray-200">
     <button
       class="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wide {activeTab === 'draw' ? 'text-slate-800 border-b-2 border-blue-500 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}"
@@ -320,122 +343,94 @@
       onclick={() => activeTab = 'objects'}
     >Objects</button>
   </div>
+  {/if}
 
-  <div class="flex-1 overflow-y-auto p-3">
+  <div class="flex-1 overflow-y-auto p-3 sm:p-4">
     {#if activeTab === 'draw'}
-      <div class="space-y-1">
-        <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Tools</h3>
-        <button
-          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors {currentTool === 'select' ? 'bg-blue-50 text-slate-800 ring-1 ring-blue-200' : 'hover:bg-gray-50 text-gray-700'}"
-          onclick={() => setTool('select')}
-        >
-          <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center {currentTool === 'select' ? 'bg-blue-100' : ''}">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
-          </div>
-          <div class="text-left">
-            <div class="font-medium">Select <span class="text-gray-400 text-xs ml-1">V</span></div>
-            <div class="text-xs text-gray-400">Click to select elements</div>
-          </div>
-        </button>
-        <button
-          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors {currentTool === 'wall' ? 'bg-blue-50 text-slate-800 ring-1 ring-blue-200' : 'hover:bg-gray-50 text-gray-700'}"
-          onclick={() => setTool('wall')}
-        >
-          <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center {currentTool === 'wall' ? 'bg-blue-100' : ''}">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/></svg>
-          </div>
-          <div class="text-left">
-            <div class="font-medium">Draw Wall <span class="text-gray-400 text-xs ml-1">W</span></div>
-            <div class="text-xs text-gray-400">Click to draw, dbl-click to finish</div>
-          </div>
-        </button>
-
-        <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2 mt-3">Structure</h3>
-        <button
-          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors {isPlacingStair ? 'bg-blue-50 text-slate-800 ring-1 ring-blue-200' : 'hover:bg-gray-50 text-gray-700'}"
-          onclick={onPlaceStair}
-        >
-          <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center {isPlacingStair ? 'bg-blue-100' : ''}">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 5h-5V2h-3v6h-4V5H7v6H2v3h5v3h3v-3h4v3h3v-6h5z"/></svg>
-          </div>
-          <div class="text-left">
-            <div class="font-medium">Add Stairs</div>
-            <div class="text-xs text-gray-400">Click to place stairs</div>
-          </div>
-        </button>
-
-        <div class="flex gap-2">
+      <div class="space-y-3">
+        <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Primary Tools</h3>
+        <div class="grid grid-cols-1 gap-2">
           <button
-            class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors {isPlacingColumn ? 'bg-blue-50 text-slate-800 ring-1 ring-blue-200' : 'hover:bg-gray-50 text-gray-700'}"
-            onclick={() => onPlaceColumn('round')}
+            class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all {currentTool === 'select' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}"
+            onclick={() => setTool('select')}
           >
-            <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center {isPlacingColumn ? 'bg-blue-100' : ''}">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="6"/><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center {currentTool === 'select' ? 'bg-white/20' : 'bg-white shadow-sm'}">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
             </div>
             <div class="text-left">
-              <div class="font-medium text-xs">Round Column</div>
+              <div class="font-bold text-sm">Select</div>
+              <div class="text-[10px] opacity-70">Edit items</div>
             </div>
           </button>
           <button
-            class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors {isPlacingColumn ? 'bg-blue-50 text-slate-800 ring-1 ring-blue-200' : 'hover:bg-gray-50 text-gray-700'}"
-            onclick={() => onPlaceColumn('square')}
+            class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all {currentTool === 'wall' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}"
+            onclick={() => setTool('wall')}
           >
-            <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center {isPlacingColumn ? 'bg-blue-100' : ''}">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12"/><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center {currentTool === 'wall' ? 'bg-white/20' : 'bg-white shadow-sm'}">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="8" width="18" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/></svg>
             </div>
             <div class="text-left">
-              <div class="font-medium text-xs">Square Column</div>
+              <div class="font-bold text-sm">Draw Wall</div>
+              <div class="text-[10px] opacity-70">Draw boundaries</div>
             </div>
           </button>
         </div>
 
-        
-
-
-        <button
-          class="w-full flex items-center justify-between px-1 py-2 mt-3"
-          onclick={() => constructionOpen = !constructionOpen}
-        >
-          <h3 class="text-xs font-semibold text-gray-400 uppercase">Doors</h3>
-          <span class="text-gray-400 text-xs">{constructionOpen ? '▼' : '▶'}</span>
-        </button>
-
-        {#if constructionOpen}
-          <div class="grid grid-cols-2 gap-2 mb-3">
-            {#each doorCatalog as dc}
-              <button
-                class="flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 transition-colors cursor-grab active:cursor-grabbing {currentTool === 'door' && selectedDoorType === dc.type ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}"
-                onclick={() => setDoorType(dc.type)}
-                draggable="true"
-                ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'door'); e.dataTransfer?.setData('application/o3d-id', dc.type); }}
-              >
-                <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{dc.icon}"/></svg>
-                </div>
-                <span class="text-xs font-medium text-gray-600">{dc.name}</span>
-                <span class="text-[10px] text-gray-400">{dc.desc}</span>
-              </button>
-            {/each}
+        <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">Structure</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            class="flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all {isPlacingStair ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
+            onclick={onPlaceStair}
+          >
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center {isPlacingStair ? 'bg-white/20' : 'bg-white shadow-sm'}">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 5h-5V2h-3v6h-4V5H7v6H2v3h5v3h3v-3h4v3h3v-6h5z"/></svg>
+            </div>
+            <span class="text-[11px] font-bold">Stairs</span>
+          </button>
+          
+          <div class="grid grid-rows-2 gap-2">
+            <button
+              class="flex items-center gap-2 px-3 rounded-xl {isPlacingColumn ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
+              onclick={() => onPlaceColumn('round')}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="6"/></svg>
+              <span class="text-[10px] font-bold uppercase">Round</span>
+            </button>
+            <button
+              class="flex items-center gap-2 px-3 rounded-xl {isPlacingColumn ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
+              onclick={() => onPlaceColumn('square')}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="6" width="12" height="12"/></svg>
+              <span class="text-[10px] font-bold uppercase">Square</span>
+            </button>
           </div>
+        </div>
 
-          <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Windows</h3>
-          <div class="grid grid-cols-2 gap-2">
-            {#each windowCatalog as wc}
-              <button
-                class="flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 transition-colors cursor-grab active:cursor-grabbing {currentTool === 'window' && selectedWindowType === wc.type ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}"
-                onclick={() => setWindowType(wc.type)}
-                draggable="true"
-                ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'window'); e.dataTransfer?.setData('application/o3d-id', wc.type); }}
-              >
-                <div class="w-9 h-9 rounded-lg bg-cyan-50 flex items-center justify-center">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0e7490" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
-                </div>
-                <span class="text-xs font-medium text-gray-600">{wc.name}</span>
-                <span class="text-[10px] text-gray-400">{wc.desc}</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
+        <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">Doors & Windows</h3>
+        <div class="grid grid-cols-3 sm:grid-cols-2 gap-2">
+          {#each doorCatalog as dc}
+            <button
+              class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all {currentTool === 'door' && selectedDoorType === dc.type ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}"
+              onclick={() => setDoorType(dc.type)}
+            >
+              <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2"><path d="{dc.icon}"/></svg>
+              </div>
+              <span class="text-[10px] font-bold text-gray-600">{dc.name}</span>
+            </button>
+          {/each}
+          {#each windowCatalog.slice(0, 3) as wc}
+            <button
+              class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all {currentTool === 'window' && selectedWindowType === wc.type ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}"
+              onclick={() => setWindowType(wc.type)}
+            >
+              <div class="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0e7490" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="1"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+              </div>
+              <span class="text-[10px] font-bold text-gray-600">{wc.name}</span>
+            </button>
+          {/each}
+        </div>
       </div>
 
     {:else if activeTab === 'rooms'}
@@ -587,7 +582,7 @@
                 onclick={(e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); toggleFavorite(item.id); }}
                 onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') { e.stopPropagation(); toggleFavorite(item.id); } }}
                 title={favoriteIds.includes(item.id) ? 'Remove from favorites' : 'Add to favorites'}
-              >{favoriteIds.includes(item.id) ? '♥' : '♡'}</span>
+                  >{favoriteIds.includes(item.id) ? '♥' : '♡'}</span>
               {#if thumbsReady >= 0 && getModelFile(item.id) && getThumbnail(getModelFile(item.id)!)}
                 <img src={getThumbnail(getModelFile(item.id)!)} alt={item.name} class="w-12 h-12 object-contain" />
               {:else}

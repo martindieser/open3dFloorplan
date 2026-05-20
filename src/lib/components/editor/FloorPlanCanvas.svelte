@@ -1969,8 +1969,9 @@
 
   function onMouseDown(e: MouseEvent) {
     markDirty();
-    // Pan if: middle mouse OR (left mouse AND (space down OR panMode is ON AND tool is select OR shift-drag in select))
-    const isPanningRequest = e.button === 1 || (e.button === 0 && (spaceDown || ($panMode && currentTool === 'select') || (e.shiftKey && currentTool === 'select')));
+    // Pan if: middle mouse OR (left mouse AND (space down OR shift-drag in select))
+    // $panMode is handled as a fallback if nothing else is hit
+    const isPanningRequest = e.button === 1 || (e.button === 0 && (spaceDown || (e.shiftKey && currentTool === 'select')));
     
     if (isPanningRequest) {
       isPanning = true;
@@ -2182,94 +2183,17 @@
         }
       }
     } else if (tool === 'select') {
-      // Multi-select bounding box drag — check FIRST before individual elements
-      if (currentSelectedIds.size >= 2 && currentFloor) {
-        const bbox = getMultiSelectBBox();
-        if (bbox && wp.x >= bbox.minX && wp.x <= bbox.maxX && wp.y >= bbox.minY && wp.y <= bbox.maxY) {
-          const origPositions = new Map<string, { start?: Point; end?: Point; position?: Point }>();
-          for (const id of currentSelectedIds) {
-            const w = currentFloor.walls.find(w => w.id === id);
-            if (w) { origPositions.set(id, { start: { ...w.start }, end: { ...w.end } }); continue; }
-            const fi = currentFloor.furniture.find(f => f.id === id);
-            if (fi) { origPositions.set(id, { position: { ...fi.position } }); continue; }
-            if (currentFloor.stairs) { const st = currentFloor.stairs.find(s => s.id === id); if (st) { origPositions.set(id, { position: { ...st.position } }); continue; } }
-            if (currentFloor.columns) { const col = currentFloor.columns.find(c => c.id === id); if (col) { origPositions.set(id, { position: { ...col.position } }); continue; } }
-          }
-          draggingMultiSelect = { startMousePos: { ...wp }, origPositions };
-          commitFurnitureMove();
-          return;
-        }
-      }
-      // Check wall endpoint handles first (drag-to-resize walls)
-      if (currentSelectedId && currentFloor) {
-        const selWall = currentFloor.walls.find(w => w.id === currentSelectedId);
-        if (selWall) {
-          const epThreshold = 15 / zoom;
-          if (Math.hypot(wp.x - selWall.start.x, wp.y - selWall.start.y) < epThreshold) {
-            draggingWallEndpoint = { wallId: selWall.id, endpoint: 'start' };
-            draggingConnectedEndpoints = findConnectedEndpoints(selWall.start, selWall.id);
-            commitFurnitureMove(); // uses same undo snapshot mechanism
-            return;
-          }
-          if (Math.hypot(wp.x - selWall.end.x, wp.y - selWall.end.y) < epThreshold) {
-            draggingWallEndpoint = { wallId: selWall.id, endpoint: 'end' };
-            draggingConnectedEndpoints = findConnectedEndpoints(selWall.end, selWall.id);
-            commitFurnitureMove();
-            return;
-          }
-          // Check midpoint handle: Alt+drag = curve, normal drag = parallel move
-          const curveHandlePt = selWall.curvePoint
-            ? selWall.curvePoint
-            : { x: (selWall.start.x + selWall.end.x) / 2, y: (selWall.start.y + selWall.end.y) / 2 };
-          if (Math.hypot(wp.x - curveHandlePt.x, wp.y - curveHandlePt.y) < epThreshold) {
-            if (e.altKey) {
-              draggingCurveHandle = selWall.id;
-            } else if (!selWall.curvePoint) {
-              // Parallel drag for straight walls
-              draggingWallParallel = {
-                wallId: selWall.id,
-                startMousePos: { ...wp },
-                origStart: { ...selWall.start },
-                origEnd: { ...selWall.end },
-                connectedStart: findConnectedEndpoints(selWall.start, selWall.id),
-                connectedEnd: findConnectedEndpoints(selWall.end, selWall.id),
-              };
-            } else {
-              // For curved walls, midpoint handle still curves
-              draggingCurveHandle = selWall.id;
-            }
-            commitFurnitureMove();
-            return;
-          }
-        }
-      }
-
-      // Check selection handles first (resize/rotate on selected furniture)
-      const handle = findHandleAt(wp);
-      if (handle && currentSelectedId && currentFloor) {
-        const fi = currentFloor.furniture.find(f => f.id === currentSelectedId);
-        if (fi) {
-          draggingHandle = handle;
-          handleDragStart = { ...wp };
-          handleOrigScale = { x: fi.scale?.x ?? 1, y: fi.scale?.y ?? 1 };
-          handleOrigRotation = fi.rotation;
-          commitFurnitureMove(); // snapshot for undo
-          return;
-        }
-      }
       // Helper: select an element (shift = add to multi-select)
       function selectElement(id: string, isShift: boolean, isCtrl: boolean = false) {
         if (isShift) {
           selectedElementIds.update(ids => {
             const next = new Set(ids);
-            // Also include the current single selection if any
             if (currentSelectedId && currentSelectedId !== id) next.add(currentSelectedId);
             if (next.has(id)) next.delete(id); else next.add(id);
             return next;
           });
           selectedElementId.set(id);
         } else {
-          // Group selection: if element is in a group and not ctrl-clicking, select all group members
           const group = currentFloor ? findGroupForElement(currentFloor, id) : undefined;
           if (group && !isCtrl) {
             selectedElementId.set(id);
@@ -2280,96 +2204,156 @@
           }
         }
         selectedRoomId.set(null);
+        panMode.set(false); // Switch to selection mode focus
       }
 
-      // Check doors/windows first (they sit on walls, so check before walls)
+      // 1. Multi-select bounding box drag
+      if (currentSelectedIds.size >= 2 && currentFloor) {
+        const bbox = getMultiSelectBBox();
+        if (bbox && wp.x >= bbox.minX && wp.x <= bbox.maxX && wp.y >= bbox.minY && wp.y <= bbox.maxY) {
+          const origPositions = new Map<string, { start?: Point; end?: Point; position?: Point }>();
+          for (const id of currentSelectedIds) {
+            const w = currentFloor.walls.find(w => w.id === id);
+            if (w) { origPositions.set(id, { start: { ...w.start }, end: { ...w.end } }); continue; }
+            const fi = currentFloor.furniture.find(f => f.id === id);
+            if (fi) { origPositions.set(id, { position: { ...fi.position } }); continue; }
+          }
+          draggingMultiSelect = { startMousePos: { ...wp }, origPositions };
+          commitFurnitureMove();
+          return;
+        }
+      }
+
+      // 2. Check Handles (Rotate/Resize)
+      const handle = findHandleAt(wp);
+      if (handle && currentSelectedId && currentFloor) {
+        const fi = currentFloor.furniture.find(f => f.id === currentSelectedId);
+        if (fi) {
+          draggingHandle = handle;
+          handleDragStart = { ...wp };
+          handleOrigScale = { x: fi.scale?.x ?? 1, y: fi.scale?.y ?? 1 };
+          handleOrigRotation = fi.rotation;
+          commitFurnitureMove();
+          return;
+        }
+      }
+
+      // 3. Check Wall Endpoints (Resize wall)
+      if (currentSelectedId && currentFloor) {
+        const selWall = currentFloor.walls.find(w => w.id === currentSelectedId);
+        if (selWall) {
+          const epThreshold = 15 / zoom;
+          if (Math.hypot(wp.x - selWall.start.x, wp.y - selWall.start.y) < epThreshold) {
+            draggingWallEndpoint = { wallId: selWall.id, endpoint: 'start' };
+            draggingConnectedEndpoints = findConnectedEndpoints(selWall.start, selWall.id);
+            commitFurnitureMove();
+            return;
+          }
+          if (Math.hypot(wp.x - selWall.end.x, wp.y - selWall.end.y) < epThreshold) {
+            draggingWallEndpoint = { wallId: selWall.id, endpoint: 'end' };
+            draggingConnectedEndpoints = findConnectedEndpoints(selWall.end, selWall.id);
+            commitFurnitureMove();
+            return;
+          }
+          // Midpoint handle (Parallel Move)
+          const midPt = { x: (selWall.start.x + selWall.end.x) / 2, y: (selWall.start.y + selWall.end.y) / 2 };
+          if (Math.hypot(wp.x - midPt.x, wp.y - midPt.y) < epThreshold && !selWall.curvePoint) {
+            draggingWallParallel = {
+              wallId: selWall.id,
+              startMousePos: { ...wp },
+              origStart: { ...selWall.start },
+              origEnd: { ...selWall.end },
+              connectedStart: findConnectedEndpoints(selWall.start, selWall.id),
+              connectedEnd: findConnectedEndpoints(selWall.end, selWall.id),
+            };
+            commitFurnitureMove();
+            return;
+          }
+        }
+      }
+
+      // 4. Check Objects (Doors, Windows, Furniture, Walls)
       const door = findDoorAt(wp);
-      if (door) {
-        selectElement(door.id, e.shiftKey);
-        if (!e.shiftKey) draggingDoorId = door.id;
-        return;
-      }
+      if (door) { selectElement(door.id, e.shiftKey); draggingDoorId = door.id; return; }
+      
       const win = findWindowAt(wp);
-      if (win) {
-        selectElement(win.id, e.shiftKey);
-        if (!e.shiftKey) draggingWindowId = win.id;
-        return;
-      }
-      // Check columns
+      if (win) { selectElement(win.id, e.shiftKey); draggingWindowId = win.id; return; }
+
       const col = findColumnAt(wp);
       if (col) {
         selectElement(col.id, e.shiftKey);
-        if (!e.shiftKey) {
-          draggingColumnId = col.id;
-          columnDragOffset = { x: wp.x - col.position.x, y: wp.y - col.position.y };
-          commitFurnitureMove(); // snapshot before drag for undo
-        }
+        draggingColumnId = col.id;
+        columnDragOffset = { x: wp.x - col.position.x, y: wp.y - col.position.y };
+        commitFurnitureMove();
         return;
       }
-      // Check stairs
+
       const stair = findStairAt(wp);
       if (stair) {
         selectElement(stair.id, e.shiftKey);
-        if (!e.shiftKey) {
-          draggingStairId = stair.id;
-          stairDragOffset = { x: wp.x - stair.position.x, y: wp.y - stair.position.y };
-          commitFurnitureMove(); // snapshot before drag for undo
-        }
+        draggingStairId = stair.id;
+        stairDragOffset = { x: wp.x - stair.position.x, y: wp.y - stair.position.y };
+        commitFurnitureMove();
         return;
       }
-      // Check furniture
+
       const fi = findFurnitureAt(wp);
       if (fi) {
         selectElement(fi.id, e.shiftKey, e.ctrlKey || e.metaKey);
-        if (!e.shiftKey && !fi.locked) {
+        if (!fi.locked) {
           draggingFurnitureId = fi.id;
-          commitFurnitureMove(); // snapshot before drag for undo
           dragOffset = { x: wp.x - fi.position.x, y: wp.y - fi.position.y };
           dragStartRotation = fi.rotation;
-          dragWasWallSnapped = false;
         }
+        commitFurnitureMove();
         return;
       }
+
       const wall = findWallAt(wp);
-      if (wall) {
-        selectElement(wall.id, e.shiftKey);
-      } else {
-        // Check if clicking on a room label (for dragging)
-        const labelRoom = findRoomLabelAt(wp);
-        if (labelRoom) {
-          draggingRoomLabelId = labelRoom.id;
-          roomLabelDragStart = { x: wp.x, y: wp.y };
-          roomLabelOrigOffset = { x: labelRoom.labelOffset?.x ?? 0, y: labelRoom.labelOffset?.y ?? 0 };
-          selectedRoomId.set(labelRoom.id);
-          selectedElementId.set(null);
-          selectedElementIds.set(new Set());
-          return;
-        }
-        const room = findRoomAt(wp);
-        if (room) {
-          selectedRoomId.set(room.id);
-          selectedElementId.set(null);
-          selectedElementIds.set(new Set());
-          // Start room drag
-          draggingRoomId = room.id;
-          roomDragStartMouse = { x: wp.x, y: wp.y };
-          roomDragStartPositions.clear();
-          for (const wid of room.walls) {
-            const w = currentFloor!.walls.find(wall => wall.id === wid);
-            if (w) roomDragStartPositions.set(wid, { start: { ...w.start }, end: { ...w.end } });
-          }
-        } else {
-          // Empty space — start marquee selection
-          marqueeStart = { ...wp };
-          marqueeEnd = { ...wp };
-          if (!e.shiftKey) {
-            selectedElementId.set(null);
-            selectedElementIds.set(new Set());
-          }
-          selectedRoomId.set(null);
-        }
+      if (wall) { selectElement(wall.id, e.shiftKey); return; }
+
+      const labelRoom = findRoomLabelAt(wp);
+      if (labelRoom) {
+        draggingRoomLabelId = labelRoom.id;
+        roomLabelDragStart = { x: wp.x, y: wp.y };
+        roomLabelOrigOffset = { x: labelRoom.labelOffset?.x ?? 0, y: labelRoom.labelOffset?.y ?? 0 };
+        selectedRoomId.set(labelRoom.id);
+        selectedElementId.set(null);
+        panMode.set(false);
+        return;
       }
-    } else if (tool === 'door') {
+
+      const room = findRoomAt(wp);
+      if (room) {
+        selectedRoomId.set(room.id);
+        selectedElementId.set(null);
+        draggingRoomId = room.id;
+        roomDragStartMouse = { x: wp.x, y: wp.y };
+        roomDragStartPositions.clear();
+        for (const wid of room.walls) {
+          const w = currentFloor!.walls.find(wall => wall.id === wid);
+          if (w) roomDragStartPositions.set(wid, { start: { ...w.start }, end: { ...w.end } });
+        }
+        panMode.set(false);
+        return;
+      }
+
+      // 5. Background fallback -> Deselect and switch to PAN or start MARQUEE
+      if (!e.shiftKey) {
+        selectedElementId.set(null);
+        selectedElementIds.set(new Set());
+        selectedRoomId.set(null);
+        panMode.set(true); // Switch to pan mode since we hit background
+      } else {
+        marqueeStart = { ...wp };
+        marqueeEnd = { ...wp };
+      }
+
+      isPanning = true;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+    }
+ else if (tool === 'door') {
       const wall = findWallAt(wp);
       if (wall) {
         addDoor(wall.id, positionOnWall(wp, wall), currentDoorType);
@@ -2437,21 +2421,34 @@
       }
     }
 
-    // Double-click on a wall in select mode to split it
-    if (currentTool === 'select') {
-      const wp = screenToWorld(sx, sy);
-      const wall = findWallAt(wp);
-      if (wall && !wall.curvePoint) {
-        const t = positionOnWall(wp, wall);
-        if (t > 0.05 && t < 0.95) {
-          const newId = splitWall(wall.id, t);
-          if (newId) {
-            selectedElementId.set(null);
-            return;
-          }
+    // Double-click on empty space to deselect everything OR on a wall to split it
+    const wp = screenToWorld(sx, sy);
+    const wall = findWallAt(wp);
+    const hit = wall || findFurnitureAt(wp) || findRoomAt(wp) || findStairAt(wp) || findColumnAt(wp);
+
+    if (!hit) {
+      // Deselect all
+      selectedElementId.set(null);
+      selectedElementIds.set(new Set());
+      selectedRoomId.set(null);
+      selectedGuideId = null;
+      selectedAnnotationId = null;
+      selectedMeasurementId = null;
+      selectedTextAnnotationId = null;
+      markDirty();
+      return;
+    } else if (currentTool === 'select' && wall && !wall.curvePoint) {
+      // Split wall
+      const t = positionOnWall(wp, wall);
+      if (t > 0.05 && t < 0.95) {
+        const newId = splitWall(wall.id, t);
+        if (newId) {
+          selectedElementId.set(null);
+          return;
         }
       }
     }
+
     if (currentTool === 'wall' && wallStart && wallSequenceFirst) {
       // Auto-close the wall loop back to the first point if we have at least 2 walls
       if (Math.hypot(wallStart.x - wallSequenceFirst.x, wallStart.y - wallSequenceFirst.y) > 5) {
@@ -3203,6 +3200,118 @@
     }
   }
 
+  // Pointer and Gesture state
+  let activePointers = new Map<number, { x: number; y: number }>();
+  let initialPinchDist = 0;
+  let initialZoom = 1;
+  let initialPinchCenter = { x: 0, y: 0 };
+  let initialCamPos = { x: 0, y: 0 };
+  let longPressTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function onPointerDown(e: PointerEvent) {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    
+    if (activePointers.size === 1) {
+      // Check if we hit an object to prevent long-press pan from interrupting object drags
+      const rect = canvas.getBoundingClientRect();
+      const wp = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+      
+      const hitHandle = currentSelectedId ? findHandleAt(wp) : null;
+      const hitObj = findDoorAt(wp) || findWindowAt(wp) || findColumnAt(wp) || findStairAt(wp) || findFurnitureAt(wp) || findWallAt(wp) || findRoomLabelAt(wp) || findRoomAt(wp);
+
+      // Long press detection for mobile to enter pan mode (only if touching empty space)
+      if (e.pointerType === 'touch' && !hitHandle && !hitObj) {
+        longPressTimeout = setTimeout(() => {
+          // Cancel any active drag that might have started
+          draggingFurnitureId = null;
+          draggingRoomId = null;
+          draggingWallEndpoint = null;
+          draggingWallParallel = null;
+          draggingCurveHandle = null;
+          draggingStairId = null;
+          draggingColumnId = null;
+          draggingTextAnnotationId = null;
+          marqueeStart = null;
+
+          panMode.set(true);
+          isPanning = true;
+          panStartX = e.clientX;
+          panStartY = e.clientY;
+
+          // provide haptic feedback if available
+          if (window.navigator.vibrate) window.navigator.vibrate(50);
+          markDirty();
+        }, 600);
+      }
+      onMouseDown(e as unknown as MouseEvent);
+    } else if (activePointers.size === 2) {
+      if (longPressTimeout) { clearTimeout(longPressTimeout); longPressTimeout = null; }
+      const pts = Array.from(activePointers.values());
+      initialPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      initialPinchCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      initialCamPos = { x: camX, y: camY };
+      initialZoom = zoom;
+      isPanning = false; 
+    }
+  }
+
+  function onPointerMove(e: PointerEvent) {
+    if (!activePointers.has(e.pointerId)) return;
+    
+    // If we move more than a few pixels, cancel long press
+    const prev = activePointers.get(e.pointerId)!;
+    if (Math.hypot(e.clientX - prev.x, e.clientY - prev.y) > 10) {
+      if (longPressTimeout) { clearTimeout(longPressTimeout); longPressTimeout = null; }
+    }
+    
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size === 1) {
+      onMouseMove(e as unknown as MouseEvent);
+    } else if (activePointers.size === 2) {
+      const pts = Array.from(activePointers.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const centerX = (pts[0].x + pts[1].x) / 2;
+      const centerY = (pts[0].y + pts[1].y) / 2;
+
+      // 1. Handle Zoom
+      if (initialPinchDist > 10) {
+        const factor = dist / initialPinchDist;
+        const newZoom = Math.max(0.1, Math.min(10, initialZoom * factor));
+        
+        const rect = canvas.getBoundingClientRect();
+        const sx = centerX - rect.left;
+        const sy = centerY - rect.top;
+
+        // Maintain world position under the pinch center
+        const worldX = (sx - width / 2) / zoom + camX;
+        const worldY = (sy - height / 2) / zoom + camY;
+        
+        // 2. Handle Pan (two-finger pan)
+        const dx = (centerX - initialPinchCenter.x) / newZoom;
+        const dy = (centerY - initialPinchCenter.y) / newZoom;
+        
+        camX = worldX - (sx - width / 2) / newZoom - dx;
+        camY = worldY - (sy - height / 2) / newZoom - dy;
+        
+        zoom = newZoom;
+        markDirty();
+      }
+    }
+  }
+
+  function onPointerUp(e: PointerEvent) {
+    if (longPressTimeout) { clearTimeout(longPressTimeout); longPressTimeout = null; }
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) {
+      initialPinchDist = 0;
+    }
+    if (activePointers.size === 0) {
+      onMouseUp(e as unknown as MouseEvent);
+    }
+  }
+
   function onContextMenu(e: MouseEvent) {
     e.preventDefault();
   }
@@ -3241,9 +3350,10 @@
     tabindex="0"
     aria-label="Floor plan editor canvas"
     style="cursor: {cursorStyle}"
-    onmousedown={onMouseDown}
-    onmousemove={onMouseMove}
-    onmouseup={onMouseUp}
+    onpointerdown={onPointerDown}
+    onpointermove={onPointerMove}
+    onpointerup={onPointerUp}
+    onpointercancel={onPointerUp}
     ondblclick={onDblClick}
     onwheel={onWheel}
     oncontextmenu={onContextMenu}

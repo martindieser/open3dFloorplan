@@ -2,9 +2,7 @@
   import { onMount } from 'svelte';
   import { currentProject, viewMode, selectedElementId, selectedRoomId, createDefaultProject } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
-  import TopBar from '$lib/components/toolbar/TopBar.svelte';
-  import BuildPanel from '$lib/components/sidebar/BuildPanel.svelte';
-  import PropertiesPanel from '$lib/components/sidebar/PropertiesPanel.svelte';
+  import ResponsiveLayout from '$lib/components/layout/ResponsiveLayout.svelte';
   import FloorPlanCanvas from '$lib/components/editor/FloorPlanCanvas.svelte';
 
   // Lazy-load ThreeViewer to avoid loading Three.js (~1.4MB) until 3D mode is activated
@@ -66,26 +64,17 @@
 }} />
 
 {#if ready}
-  <div class="h-screen flex flex-col overflow-hidden">
-    <TopBar />
-    <div class="flex flex-1 overflow-hidden">
-      {#if mode === '2d'}
-        <BuildPanel />
+  <ResponsiveLayout>
+    {#if mode === '2d'}
+      <FloorPlanCanvas />
+    {:else}
+      {#if ThreeViewer}
+        <ThreeViewer />
+      {:else}
+        <div class="flex items-center justify-center h-full text-slate-400">Loading 3D viewer…</div>
       {/if}
-      <div class="flex-1 min-w-0 relative">
-        {#if mode === '2d'}
-          <FloorPlanCanvas />
-        {:else}
-          {#if ThreeViewer}
-            <ThreeViewer />
-          {:else}
-            <div class="flex items-center justify-center h-full text-slate-400">Loading 3D viewer…</div>
-          {/if}
-        {/if}
-      </div>
-      <PropertiesPanel is3D={mode === '3d'} />
-    </div>
-  </div>
+    {/if}
+  </ResponsiveLayout>
 {:else}
   <div class="h-screen flex items-center justify-center">
     <p class="text-gray-400">Loading...</p>
