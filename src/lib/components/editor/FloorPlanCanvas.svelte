@@ -2205,7 +2205,6 @@
           }
         }
         selectedRoomId.set(null);
-        panMode.set(false); // Switch to selection mode focus
       }
 
       // 1. Multi-select bounding box drag
@@ -2320,7 +2319,6 @@
         roomLabelOrigOffset = { x: labelRoom.labelOffset?.x ?? 0, y: labelRoom.labelOffset?.y ?? 0 };
         selectedRoomId.set(labelRoom.id);
         selectedElementId.set(null);
-        panMode.set(false);
         return;
       }
 
@@ -2335,7 +2333,6 @@
           const w = currentFloor!.walls.find(wall => wall.id === wid);
           if (w) roomDragStartPositions.set(wid, { start: { ...w.start }, end: { ...w.end } });
         }
-        panMode.set(false);
         return;
       }
 
@@ -2344,7 +2341,6 @@
         selectedElementId.set(null);
         selectedElementIds.set(new Set());
         selectedRoomId.set(null);
-        panMode.set(true); // Switch to pan mode since we hit background
       } else {
         marqueeStart = { ...wp };
         marqueeEnd = { ...wp };

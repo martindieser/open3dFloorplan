@@ -19,6 +19,7 @@
 
 - a veces te mueve de forma random a lugares random items?
 
+bug al colocar objeto cerca de las paredes, aparece dos posibles y te termina colocando dos objetos
 
 AGREGADOS
 ================================================
@@ -27,6 +28,7 @@ AGREGADOS
 - touch screen que funcione en mobile (ham mode y select mode), si es un item te permite moverlo, sino es para moverte en el plano 
 - drag & drop objetos en mobile, cerrar el panel una vez se selecciona algo
 
+- eliminar diferenciacion entre modo select y modo pan. Ahora es modo pan por defecto, y seleccionar un objeto pasa a modo select 
 
 
 ================================================

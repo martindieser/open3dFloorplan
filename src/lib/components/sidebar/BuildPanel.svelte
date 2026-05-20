@@ -51,14 +51,10 @@
     let current: Tool = 'select';
     selectedTool.subscribe(v => current = v)();
 
-    if (tool === 'select' && current === 'select') {
-      // Toggle pan mode if already in select mode
-      panMode.update(v => !v);
-    } else {
-      selectedTool.set(tool);
-      placingFurnitureId.set(null);
-      panMode.set(false); // Disable pan mode when switching to other tools
-    }
+    const nextTool = current === tool ? 'select' : tool;
+    selectedTool.set(nextTool);
+    placingFurnitureId.set(null);
+    panMode.set(nextTool === 'select');
   }
 
   let currentTool = $state<Tool>('select');
@@ -357,18 +353,6 @@
       <div class="space-y-3">
         <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Primary Tools</h3>
         <div class="grid grid-cols-1 gap-2">
-          <button
-            class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all {currentTool === 'select' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}"
-            onclick={() => setTool('select')}
-          >
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center {currentTool === 'select' ? 'bg-white/20' : 'bg-white shadow-sm'}">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
-            </div>
-            <div class="text-left">
-              <div class="font-bold text-sm">Select</div>
-              <div class="text-[10px] opacity-70">Edit items</div>
-            </div>
-          </button>
           <button
             class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all {currentTool === 'wall' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}"
             onclick={() => setTool('wall')}

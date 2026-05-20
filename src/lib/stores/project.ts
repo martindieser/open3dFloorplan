@@ -34,7 +34,7 @@ export type Tool = 'select' | 'wall' | 'door' | 'window' | 'furniture' | 'text';
 export const selectedTool = writable<Tool>('select');
 export const snapEnabled = writable<boolean>(true);
 /** When true, left-click drag pans the canvas instead of selecting */
-export const panMode = writable<boolean>(false);
+export const panMode = writable<boolean>(true);
 export const showFurnitureStore = writable<boolean>(true);
 export const selectedElementId = writable<string | null>(null);
 /** Multi-select: set of element IDs currently selected (used alongside selectedElementId for marquee/shift-click) */
