@@ -7,25 +7,33 @@
 
 - sacar capacidad para dibujar columnas?
 
+
+
+BUGS
+====================================================================
+
 - change walls into a default thickness of 8
 
 
+- multiple toggle dentro del panel menu (solo en desktop al parecer),
+- no esta más pero si hay bug al tocar una estructura y draw walls, o asi, y las doors no tienen previsualizacion
 
 - si se esta en pan mode no s pueden poner objetos??
-
 
 
 - si se toca una casa rapido en touch mode se queda re bug y te deja mover todo lo que es molesto
 
 - a veces te mueve de forma random a lugares random items?
 
-bug al colocar objeto cerca de las paredes, aparece dos posibles y te termina colocando dos objetos
+- bug al colocar objeto cerca de las paredes, aparece dos posibles y te termina colocando dos objetos
 
 AGREGADOS
 ================================================
 
+- flatten en el topbar del mobile layout
 
 - touch screen que funcione en mobile (ham mode y select mode), si es un item te permite moverlo, sino es para moverte en el plano 
+
 - drag & drop objetos en mobile, cerrar el panel una vez se selecciona algo
 
 - eliminar diferenciacion entre modo select y modo pan. Ahora es modo pan por defecto, y seleccionar un objeto pasa a modo select 

@@ -551,94 +551,60 @@
     const wall = currentFloor.walls.find(w => w.id === placementPreview!.wallId);
     if (!wall) return;
     const t = placementPreview.position;
-    const wpt = wallPointAt(wall, t);
-    const s = worldToScreen(wpt.x, wpt.y);
-    const tan = wallTangentAt(wall, t);
-    const ux = tan.x, uy = tan.y;
-    const nx = -uy, ny = ux;
     const isDoor = placementPreview.type === 'door';
-    const itemWidth = isDoor ? 90 : 120;
-    const halfW = (itemWidth / 2) * zoom;
-    const thickness = Math.max(wall.thickness * zoom, 4);
+
+    // Width defaults matching project.ts
+    const doorWidths: Record<string, number> = {
+      single: 90,
+      double: 150,
+      sliding: 180,
+      french: 150,
+      pocket: 90,
+      bifold: 180,
+    };
+    const windowWidths: Record<string, number> = {
+      standard: 120,
+      fixed: 100,
+      casement: 80,
+      sliding: 180,
+      bay: 200,
+    };
+
+    const itemWidth = isDoor
+      ? (doorWidths[currentDoorType] || 90)
+      : (windowWidths[currentWindowType] || 120);
 
     ctx.save();
     ctx.globalAlpha = 0.5;
 
-    ctx.fillStyle = '#fafafa';
-    const gux = ux * halfW, guy = uy * halfW;
-    const gnx = nx * (thickness / 2 + 1), gny = ny * (thickness / 2 + 1);
-    ctx.beginPath();
-    ctx.moveTo(s.x - gux + gnx, s.y - guy + gny);
-    ctx.lineTo(s.x + gux + gnx, s.y + guy + gny);
-    ctx.lineTo(s.x + gux - gnx, s.y + guy - gny);
-    ctx.lineTo(s.x - gux - gnx, s.y - guy - gny);
-    ctx.closePath();
-    ctx.fill();
-
     if (isDoor) {
-      const wallAngle = Math.atan2(uy, ux);
-      const r = itemWidth * zoom;
-      const hingeX = s.x - ux * halfW;
-      const hingeY = s.y - uy * halfW;
-      const startAngle = wallAngle + Math.PI;
-      const endAngle = startAngle + Math.PI / 2;
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(hingeX, hingeY, r, Math.min(startAngle, endAngle), Math.max(startAngle, endAngle));
-      ctx.stroke();
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(hingeX, hingeY);
-      ctx.lineTo(hingeX + r * Math.cos(endAngle), hingeY + r * Math.sin(endAngle));
-      ctx.stroke();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = '#3b82f6';
-      const jamb = thickness / 2 + 2;
-      for (const sign of [-1, 1]) {
-        const jx = s.x + ux * halfW * sign;
-        const jy = s.y + uy * halfW * sign;
-        ctx.beginPath();
-        ctx.moveTo(jx + nx * jamb, jy + ny * jamb);
-        ctx.lineTo(jx - nx * jamb, jy - ny * jamb);
-        ctx.stroke();
-      }
+      const door: Door = {
+        id: 'preview',
+        wallId: wall.id,
+        position: t,
+        width: itemWidth,
+        height: 210,
+        type: currentDoorType,
+        swingDirection: 'left',
+        flipSide: false,
+      };
+      _drawDoorOnWall(getCS(), wall, door);
     } else {
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 2;
-      for (const off of [-2, 0, 2]) {
-        const ox = nx * off, oy = ny * off;
-        ctx.beginPath();
-        ctx.moveTo(s.x - ux * halfW + ox, s.y - uy * halfW + oy);
-        ctx.lineTo(s.x + ux * halfW + ox, s.y + uy * halfW + oy);
-        ctx.stroke();
-      }
+      const win: Win = {
+        id: 'preview',
+        wallId: wall.id,
+        position: t,
+        width: itemWidth,
+        height: 120,
+        type: currentWindowType,
+        sillHeight: 90,
+      };
+      _drawWindowOnWall(getCS(), wall, win);
     }
-
-    ctx.globalAlpha = 1;
-
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    const text = isDoor ? 'Click to place door' : 'Click to place window';
-    const tm = ctx.measureText(text);
-    const tx = s.x, ty = s.y - thickness / 2 - 24;
-    const pw = tm.width + 12, ph = 20;
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.roundRect(tx - pw / 2, ty - ph / 2, pw, ph, 4);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(tx - 5, ty + ph / 2);
-    ctx.lineTo(tx + 5, ty + ph / 2);
-    ctx.lineTo(tx, ty + ph / 2 + 5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, tx, ty);
 
     ctx.restore();
 
+    // Wall highlight
     const ws = worldToScreen(wall.start.x, wall.start.y);
     const we = worldToScreen(wall.end.x, wall.end.y);
     ctx.strokeStyle = '#3b82f680';
@@ -2349,19 +2315,8 @@
       isPanning = true;
       panStartX = e.clientX;
       panStartY = e.clientY;
-    }
- else if (tool === 'door') {
-      const wall = findWallAt(wp);
-      if (wall) {
-        addDoor(wall.id, positionOnWall(wp, wall), currentDoorType);
-        selectedTool.set('select');
-      }
-    } else if (tool === 'window') {
-      const wall = findWallAt(wp);
-      if (wall) {
-        addWindow(wall.id, positionOnWall(wp, wall), currentWindowType);
-        selectedTool.set('select');
-      }
+    } else if (tool === 'door' || tool === 'window') {
+      // Handled by onMouseMove for preview and onMouseUp for placement
     }
   }
 
@@ -2885,6 +2840,19 @@
     if (draggingStairId) commitFurnitureMove();
     if (draggingColumnId) commitFurnitureMove();
     if (draggingTextAnnotationId) commitFurnitureMove();
+
+    // Handle door/window placement on release
+    if ((currentTool === 'door' || currentTool === 'window') && placementPreview) {
+      if (currentTool === 'door') {
+        addDoor(placementPreview.wallId, placementPreview.position, currentDoorType);
+      } else {
+        addWindow(placementPreview.wallId, placementPreview.position, currentWindowType);
+      }
+      selectedTool.set('select');
+      placementPreview = null;
+      markDirty();
+    }
+
     draggingTextAnnotationId = null;
     draggingRoomId = null;
     roomDragStartPositions.clear();
@@ -3414,7 +3382,7 @@
     currentTool === 'text' ? 'text' :
     currentTool === 'select' ? 'default' :
     currentTool === 'furniture' ? 'copy' :
-    (currentTool === 'door' || currentTool === 'window') ? (placementPreview ? 'crosshair' : 'not-allowed') :
+    (currentTool === 'door' || currentTool === 'window') ? 'crosshair' :
     'crosshair'
   );
 </script>
