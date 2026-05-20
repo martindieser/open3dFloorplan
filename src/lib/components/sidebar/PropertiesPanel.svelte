@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { activeFloor, selectedElementId, selectedRoomId, updateWall, updateDoor, updateWindow, updateRoom, updateFurniture, detectedRoomsStore, updateStair, updateColumn, updateBackgroundImage, setBackgroundImage, calibrationMode, calibrationPoints, updateTextAnnotation, toggleFurnitureLock } from '$lib/stores/project';
+  import { activeFloor, selectedElementId, selectedRoomId, updateWall, updateDoor, updateWindow, updateRoom, updateFurniture, detectedRoomsStore, updateStair, updateColumn, updateBackgroundImage, setBackgroundImage, calibrationMode, calibrationPoints, updateTextAnnotation, toggleFurnitureLock, removeElement } from '$lib/stores/project';
   import { floorMaterials, wallColors } from '$lib/utils/materials';
   import { getCatalogItem } from '$lib/utils/furnitureCatalog';
   import { projectSettings, formatLength, formatArea } from '$lib/stores/settings';
@@ -309,7 +309,29 @@
     { label: '🧶 Carpet', ids: ['carpet-beige', 'carpet-gray'] },
   ];
 
-  import { isMobile } from '$lib/stores/ui';
+  import { isMobile, isBottomPanelOpen } from '$lib/stores/ui';
+
+  function handleDeleteElement() {
+    if (selectedFurniture) removeElement(selectedFurniture.id);
+    else if (selectedWall) removeElement(selectedWall.id);
+    else if (selectedDoor) removeElement(selectedDoor.id);
+    else if (selectedWindow) removeElement(selectedWindow.id);
+    else if (selectedStair) removeElement(selectedStair.id);
+    else if (selectedColumn) removeElement(selectedColumn.id);
+    else if (selectedTextAnnotation) removeElement(selectedTextAnnotation.id);
+    else if (selectedRoom) {
+      updateRoom(selectedRoom.id, { hidden: true });
+      updateDetectedRoom(selectedRoom.id, { hidden: true } as any);
+      selectedRoomId.set(null);
+    }
+    
+    if (!selectedRoom) {
+      selectedElementId.set(null);
+    }
+    if ($isMobile) {
+      isBottomPanelOpen.set(false);
+    }
+  }
 
   // ... (rest of imports)
 
@@ -324,6 +346,13 @@
     <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
       <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-xs">▭</div>
       Wall Properties
+      <button
+        onclick={handleDeleteElement}
+        class="ml-auto p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+        title="Delete Wall"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>
     </h3>
     <div class="space-y-4">
       <label class="block">
@@ -453,6 +482,13 @@
     <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
       <span class="w-6 h-6 bg-amber-100 rounded flex items-center justify-center text-xs">🚪</span>
       Door Properties
+      <button
+        onclick={handleDeleteElement}
+        class="ml-auto p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+        title="Delete Door"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>
     </h3>
     <div class="space-y-3">
       <label class="block">
@@ -502,6 +538,13 @@
     <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
       <span class="w-6 h-6 bg-cyan-100 rounded flex items-center justify-center text-xs">🪟</span>
       Window Properties
+      <button
+        onclick={handleDeleteElement}
+        class="ml-auto p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+        title="Delete Window"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>
     </h3>
     <div class="space-y-3">
       <label class="block">
@@ -543,10 +586,12 @@
       </span>
       {getCatalogItem(selectedFurniture.catalogId)?.name ?? 'Furniture'} Properties
       <button
-        onclick={() => { if (selectedFurniture) toggleFurnitureLock(selectedFurniture.id); }}
-        class="ml-auto px-1.5 py-0.5 rounded text-xs border transition-colors {selectedFurniture.locked ? 'bg-amber-100 border-amber-400 text-amber-700' : 'border-gray-200 hover:bg-gray-50 text-gray-500'}"
-        title={selectedFurniture.locked ? 'Unlock (Ctrl+L)' : 'Lock (Ctrl+L)'}
-      >{selectedFurniture.locked ? '🔒 Locked' : '🔓'}</button>
+        onclick={handleDeleteElement}
+        class="ml-auto p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+        title="Delete Furniture"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>
     </h3>
     <div class="space-y-3">
       <!-- Color -->
@@ -713,6 +758,13 @@
     <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
       <span class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs">🪜</span>
       Stair Properties
+      <button
+        onclick={handleDeleteElement}
+        class="ml-auto p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+        title="Delete Stair"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>
     </h3>
     <div class="space-y-3">
       <label class="block">
@@ -752,6 +804,13 @@
     <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
       <span class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs">🏛️</span>
       Column Properties
+      <button
+        onclick={handleDeleteElement}
+        class="ml-auto p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+        title="Delete Column"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>
     </h3>
     <div class="space-y-3">
       <label class="block">
@@ -798,6 +857,13 @@
       <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
         <span class="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center text-xs">🏷️</span>
         Text Annotation
+        <button
+          onclick={handleDeleteElement}
+          class="ml-auto p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+          title="Delete Annotation"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        </button>
       </h3>
       <label class="block">
         <span class="text-xs text-gray-500">Text</span>
