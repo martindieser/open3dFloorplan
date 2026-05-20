@@ -2470,13 +2470,17 @@
         if (cat) { w = cat.width; d = cat.depth; }
       } else if (type === 'room' || type === 'room-template') {
         w = 400; d = 300;
+      } else if (type === 'stair') {
+        w = 100; d = 300;
+      } else if (type === 'column') {
+        w = 30; d = 30;
       }
       
       // Use snapped coordinates for the ghost so it matches the drop position
       dragPreview = { 
         x: snap(mousePos.x), 
         y: snap(mousePos.y), 
-        type: type === 'furniture' ? 'item' : 'room', 
+        type: (type === 'furniture' || type === 'stair' || type === 'column') ? 'item' : 'room', 
         width: w, 
         depth: d 
       };
@@ -2775,6 +2779,16 @@
             selectedTool.set('select');
           }
         }
+      } else if (type === 'stair') {
+        const newId = addStair(pos);
+        selectedElementId.set(newId);
+        selectedTool.set('select');
+        placingStair.set(false);
+      } else if (type === 'column') {
+        const newId = addColumn(pos, id as 'round' | 'square');
+        selectedElementId.set(newId);
+        selectedTool.set('select');
+        placingColumn.set(false);
       }
       
       draggingFromLibrary.set(null);
@@ -3252,6 +3266,14 @@
           selectedTool.set('select');
         }
       }
+    } else if (itemType === 'stair') {
+      const id = addStair(pos);
+      selectedElementId.set(id);
+      selectedTool.set('select');
+    } else if (itemType === 'column') {
+      const id = addColumn(pos, itemId as 'round' | 'square');
+      selectedElementId.set(id);
+      selectedTool.set('select');
     }
   }
 

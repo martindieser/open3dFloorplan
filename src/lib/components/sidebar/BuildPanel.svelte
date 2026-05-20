@@ -173,17 +173,20 @@
   let isPlacingColumn = $state(false);
   placingColumn.subscribe(v => { isPlacingColumn = v; });
 
-  function onPlaceStair() {
-    placingStair.set(true);
-    selectedTool.set('select');
-    placingFurnitureId.set(null);
+  function onStairClick() {
+    let cx = 0, cy = 0;
+    canvasCamX.subscribe(v => { cx = v; })();
+    canvasCamY.subscribe(v => { cy = v; })();
+    addStair({ x: cx, y: cy });
+    if ($isMobile) isBottomPanelOpen.set(false);
   }
 
-  function onPlaceColumn(shape: 'round' | 'square') {
-    placingColumn.set(true);
-    placingColumnShape.set(shape);
-    selectedTool.set('select');
-    placingFurnitureId.set(null);
+  function onColumnClick(shape: 'round' | 'square') {
+    let cx = 0, cy = 0;
+    canvasCamX.subscribe(v => { cx = v; })();
+    canvasCamY.subscribe(v => { cy = v; })();
+    addColumn({ x: cx, y: cy }, shape);
+    if ($isMobile) isBottomPanelOpen.set(false);
   }
 
   function onImportImage() {
@@ -321,7 +324,7 @@
     'Plumbing': '#0ea5e9',
   };
 
-  function startDragging(type: 'furniture' | 'room' | 'room-template', id: string) {
+  function startDragging(type: 'furniture' | 'room' | 'room-template' | 'stair' | 'column', id: string) {
     draggingFromLibrary.set({ type, id });
     if ($isMobile) {
       isBottomPanelOpen.set(false);
@@ -370,8 +373,11 @@
         <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">Structure</h3>
         <div class="grid grid-cols-2 gap-2">
           <button
-            class="flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all {isPlacingStair ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
+            class="flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all cursor-grab active:cursor-grabbing {isPlacingStair ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
             onclick={onPlaceStair}
+            onpointerdown={() => startDragging('stair', 'straight')}
+            draggable="true"
+            ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'stair'); e.dataTransfer?.setData('application/o3d-id', 'straight'); }}
           >
             <div class="w-10 h-10 rounded-lg flex items-center justify-center {isPlacingStair ? 'bg-white/20' : 'bg-white shadow-sm'}">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 5h-5V2h-3v6h-4V5H7v6H2v3h5v3h3v-3h4v3h3v-6h5z"/></svg>
@@ -381,15 +387,21 @@
           
           <div class="grid grid-rows-2 gap-2">
             <button
-              class="flex items-center gap-2 px-3 rounded-xl {isPlacingColumn ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
+              class="flex items-center gap-2 px-3 rounded-xl cursor-grab active:cursor-grabbing {isPlacingColumn ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
               onclick={() => onPlaceColumn('round')}
+              onpointerdown={() => startDragging('column', 'round')}
+              draggable="true"
+              ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'column'); e.dataTransfer?.setData('application/o3d-id', 'round'); }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="6"/></svg>
               <span class="text-[10px] font-bold uppercase">Round</span>
             </button>
             <button
-              class="flex items-center gap-2 px-3 rounded-xl {isPlacingColumn ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
+              class="flex items-center gap-2 px-3 rounded-xl cursor-grab active:cursor-grabbing {isPlacingColumn ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-gray-100'}"
               onclick={() => onPlaceColumn('square')}
+              onpointerdown={() => startDragging('column', 'square')}
+              draggable="true"
+              ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'column'); e.dataTransfer?.setData('application/o3d-id', 'square'); }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="6" width="12" height="12"/></svg>
               <span class="text-[10px] font-bold uppercase">Square</span>

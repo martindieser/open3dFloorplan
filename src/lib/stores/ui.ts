@@ -6,7 +6,7 @@ export const isMobile = writable(false);
 export const activeMobileTab = writable<MobileTab>('build');
 export const isSidebarOpen = writable(true);
 export const isBottomPanelOpen = writable(false);
-export const draggingFromLibrary = writable<{ type: 'furniture' | 'room' | 'room-template'; id: string } | null>(null);
+export const draggingFromLibrary = writable<{ type: 'furniture' | 'room' | 'room-template' | 'stair' | 'column'; id: string } | null>(null);
 
 // Initialize screen size detection
 if (typeof window !== 'undefined') {
