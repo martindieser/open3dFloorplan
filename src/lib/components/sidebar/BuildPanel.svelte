@@ -159,12 +159,14 @@
     selectedDoorType = type;
     placingDoorType.set(type);
     setTool('door');
+    if ($isMobile) isBottomPanelOpen.set(false);
   }
 
   function setWindowType(type: Win['type']) {
     selectedWindowType = type;
     placingWindowType.set(type);
     setTool('window');
+    if ($isMobile) isBottomPanelOpen.set(false);
   }
 
   let isPlacingStair = $state(false);
