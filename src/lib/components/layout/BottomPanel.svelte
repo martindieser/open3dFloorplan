@@ -53,8 +53,12 @@
   {#each tabs as tab}
     <button
       onclick={() => {
-        activeMobileTab.set(tab.id);
-        isBottomPanelOpen.set(true);
+        if (isOpen && activeTab === tab.id) {
+          isBottomPanelOpen.set(false);
+        } else {
+          activeMobileTab.set(tab.id);
+          isBottomPanelOpen.set(true);
+        }
       }}
       class="flex flex-col items-center justify-center gap-1 w-full h-full transition-colors {activeTab === tab.id ? 'text-blue-600' : 'text-gray-400'}"
     >
