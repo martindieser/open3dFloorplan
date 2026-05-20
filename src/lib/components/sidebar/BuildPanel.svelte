@@ -11,7 +11,7 @@
   import { importRoomPlan, extractRoomJsonFromZip, ORTHO_VERSION } from '$lib/utils/roomplanImport';
   import { currentProject, loadProject, importFloorIntoCurrentProject, createDefaultProject } from '$lib/stores/project';
   import type { Project } from '$lib/models/types';
-  import { isMobile, activeMobileTab } from '$lib/stores/ui';
+  import { isMobile, activeMobileTab, isBottomPanelOpen, draggingFromLibrary } from '$lib/stores/ui';
 
   // AreaSummaryPanel moved to top bar dialog
   let activeTab = $state<'draw' | 'rooms' | 'objects'>('draw');
@@ -324,6 +324,13 @@
     'Electrical': '#2563eb',
     'Plumbing': '#0ea5e9',
   };
+
+  function startDragging(type: 'furniture' | 'room' | 'room-template', id: string) {
+    draggingFromLibrary.set({ type, id });
+    if ($isMobile) {
+      isBottomPanelOpen.set(false);
+    }
+  }
 </script>
 
 <div class="flex flex-col h-full overflow-hidden {$isMobile ? 'bg-white' : 'w-64 border-r border-gray-200'}">
@@ -442,6 +449,7 @@
             <button
               class="flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-grab active:cursor-grabbing"
               onclick={() => onPresetClick(preset.id)}
+              onpointerdown={() => startDragging('room', preset.id)}
               draggable="true"
               ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'room'); e.dataTransfer?.setData('application/o3d-id', preset.id); }}
             >
@@ -460,6 +468,7 @@
             <button
               class="flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 border-gray-100 hover:border-green-300 hover:bg-green-50 transition-colors cursor-grab active:cursor-grabbing"
               onclick={() => onPresetClick(tmpl.presetId, tmpl.name)}
+              onpointerdown={() => startDragging('room-template', tmpl.name)}
               draggable="true"
               ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'room-template'); e.dataTransfer?.setData('application/o3d-id', tmpl.name); }}
             >
@@ -531,6 +540,7 @@
                 <button
                   class="relative flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 transition-colors cursor-grab active:cursor-grabbing {currentPlacing === item.id ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-300' : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'}"
                   onclick={() => onFurnitureClick(item)}
+                  onpointerdown={() => startDragging('furniture', item.id)}
                   draggable="true"
                   ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'furniture'); e.dataTransfer?.setData('application/o3d-id', item.id); }}
                   onmouseenter={(e) => onItemMouseEnter(e, item)}
@@ -568,6 +578,7 @@
             <button
               class="relative flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-colors cursor-grab active:cursor-grabbing {currentPlacing === item.id ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-300' : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'}"
               onclick={() => onFurnitureClick(item)}
+              onpointerdown={() => startDragging('furniture', item.id)}
               draggable="true"
               ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'furniture'); e.dataTransfer?.setData('application/o3d-id', item.id); }}
               onmouseenter={(e) => onItemMouseEnter(e, item)}

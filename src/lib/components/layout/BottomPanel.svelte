@@ -9,14 +9,6 @@
   let activeTab = $derived($activeMobileTab);
   let hasSelection = $derived($selectedElementId !== null || $selectedRoomId !== null);
 
-  // Auto-switch to properties if something is selected
-  $effect(() => {
-    if (hasSelection && activeTab !== 'properties') {
-      activeMobileTab.set('properties');
-      isBottomPanelOpen.set(true);
-    }
-  });
-
   const tabs = [
     { id: 'build', label: 'Build', icon: '⚒️' },
     { id: 'rooms', label: 'Rooms', icon: '⬜' },

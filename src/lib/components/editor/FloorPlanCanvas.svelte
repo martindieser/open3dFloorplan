@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { isMobile, draggingFromLibrary } from '$lib/stores/ui';
   import { onMount } from 'svelte';
   import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, setBackgroundImage, canvasZoom, canvasCamX, canvasCamY, triggerZoomToFit, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, createGroup, ungroupElements, findGroupForElement } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine, Measurement, Annotation, TextAnnotation } from '$lib/models/types';
@@ -2464,6 +2465,28 @@
     const rect = canvas.getBoundingClientRect();
     mousePos = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
 
+    // Handle mobile drag from library preview
+    if ($draggingFromLibrary) {
+      const { type, id } = $draggingFromLibrary;
+      let w = 60, d = 60;
+      if (type === 'furniture') {
+        const cat = getCatalogItem(id);
+        if (cat) { w = cat.width; d = cat.depth; }
+      } else if (type === 'room' || type === 'room-template') {
+        w = 400; d = 300;
+      }
+      
+      // Use snapped coordinates for the ghost so it matches the drop position
+      dragPreview = { 
+        x: snap(mousePos.x), 
+        y: snap(mousePos.y), 
+        type: type === 'furniture' ? 'item' : 'room', 
+        width: w, 
+        depth: d 
+      };
+      return;
+    }
+
     // Drag room label
     if (draggingRoomLabelId) {
       const dx = mousePos.x - roomLabelDragStart.x;
@@ -2727,6 +2750,42 @@
 
   function onMouseUp(e: MouseEvent) {
     markDirty();
+
+    // Handle mobile drop
+    if ($draggingFromLibrary) {
+      const { type, id } = $draggingFromLibrary;
+      
+      const rect = canvas.getBoundingClientRect();
+      const wp = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+      const pos = { x: snap(wp.x), y: snap(wp.y) };
+
+      if (type === 'furniture') {
+        const newId = addFurniture(id, pos);
+        selectedElementId.set(newId);
+        selectedTool.set('select');
+        placingFurnitureId.set(null);
+      } else if (type === 'room') {
+        const preset = roomPresets.find(p => p.id === id);
+        if (preset) {
+          placePreset(preset, pos);
+          selectedTool.set('select');
+        }
+      } else if (type === 'room-template') {
+        const template = roomTemplates.find(t => t.name === id);
+        if (template) {
+          const preset = roomPresets.find(p => p.id === template.presetId);
+          if (preset) {
+            placeRoomTemplate(preset, pos, template);
+            selectedTool.set('select');
+          }
+        }
+      }
+      
+      draggingFromLibrary.set(null);
+      dragPreview = null;
+      return;
+    }
+
     isPanning = false;
     draggingGuideId = null;
 
@@ -3257,17 +3316,18 @@
   }
 
   function onPointerMove(e: PointerEvent) {
-    if (!activePointers.has(e.pointerId)) return;
+    if (!activePointers.has(e.pointerId) && !$draggingFromLibrary) return;
     
     // If we move more than a few pixels, cancel long press
-    const prev = activePointers.get(e.pointerId)!;
-    if (Math.hypot(e.clientX - prev.x, e.clientY - prev.y) > 10) {
-      if (longPressTimeout) { clearTimeout(longPressTimeout); longPressTimeout = null; }
+    if (activePointers.has(e.pointerId)) {
+      const prev = activePointers.get(e.pointerId)!;
+      if (Math.hypot(e.clientX - prev.x, e.clientY - prev.y) > 10) {
+        if (longPressTimeout) { clearTimeout(longPressTimeout); longPressTimeout = null; }
+      }
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
-    
-    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    if (activePointers.size === 1) {
+    if (activePointers.size <= 1 || $draggingFromLibrary) {
       onMouseMove(e as unknown as MouseEvent);
     } else if (activePointers.size === 2) {
       const pts = Array.from(activePointers.values());

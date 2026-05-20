@@ -14,10 +14,25 @@
 - si se esta en pan mode no s pueden poner objetos??
 
 
-- drag & drop de room templates no funr
+
+- si se toca una casa rapido en touch mode se queda re bug y te deja mover todo lo que es molesto
+
+- a veces te mueve de forma random a lugares random items?
+
+
+AGREGADOS
+================================================
+
+
+- touch screen que funcione en mobile (ham mode y select mode), si es un item te permite moverlo, sino es para moverte en el plano 
+- drag & drop objetos en mobile, cerrar el panel una vez se selecciona algo
+
+
 
 ================================================
 FIXED
+
+- drag & drop de room templates no funr
 
 - sacar menu o dropdown del boton derecho que es horrible
 
