@@ -339,10 +339,32 @@
 </script>
 
 <div 
-  class="flex flex-col overflow-y-auto p-4 bg-white {hasSelection ? '' : 'hidden'} 
-  {$isMobile ? 'w-full' : (is3D ? 'w-80' : 'w-64') + ' fixed right-0 top-[48px] bottom-[36px] border-l border-gray-200 z-40 shadow-lg'}"
+  class="flex flex-col overflow-y-auto p-4 bg-white
+  {$isMobile ? 'w-full h-full' : (is3D ? 'w-80' : 'w-64') + ' fixed right-0 top-[48px] bottom-[36px] border-l border-gray-200 z-40 shadow-lg'}"
 >
-  {#if selectedWall}
+  {#if !hasSelection}
+    <div class="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-4">
+      <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-3xl shadow-inner">
+        ✨
+      </div>
+      <div>
+        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Select an element</h3>
+        <p class="text-xs text-gray-400 mt-2 leading-relaxed">
+          Tap any object, wall, or room to see and edit its properties here.
+        </p>
+      </div>
+      {#if $isMobile}
+        <div class="pt-4">
+          <button 
+            onclick={() => isBottomPanelOpen.set(false)}
+            class="px-6 py-2 bg-slate-800 text-white text-xs font-bold rounded-full shadow-lg active:scale-95 transition-transform"
+          >
+            Go back to canvas
+          </button>
+        </div>
+      {/if}
+    </div>
+  {:else if selectedWall}
     <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
       <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-xs">▭</div>
       Wall Properties
