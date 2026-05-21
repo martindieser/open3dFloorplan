@@ -3248,9 +3248,11 @@
         const sx = centerX - rect.left;
         const sy = centerY - rect.top;
 
-        // Maintain world position under the pinch center
-        const worldX = (sx - width / 2) / zoom + camX;
-        const worldY = (sy - height / 2) / zoom + camY;
+        // The key to a stable pinch is calculating the world position 
+        // using the INITIAL zoom/camera state for the anchor point,
+        // then finding the new camera position for that same anchor.
+        const worldX = (initialPinchCenter.x - rect.left - width / 2) / initialZoom + initialCamPos.x;
+        const worldY = (initialPinchCenter.y - rect.top - height / 2) / initialZoom + initialCamPos.y;
         
         // 2. Handle Pan (two-finger pan)
         const dx = (centerX - initialPinchCenter.x) / newZoom;
@@ -3313,7 +3315,7 @@
     class="block w-full h-full"
     tabindex="0"
     aria-label="Floor plan editor canvas"
-    style="cursor: {cursorStyle}"
+    style="touch-action: none; cursor: {cursorStyle}"
     onpointerdown={onPointerDown}
     onpointermove={onPointerMove}
     onpointerup={onPointerUp}
