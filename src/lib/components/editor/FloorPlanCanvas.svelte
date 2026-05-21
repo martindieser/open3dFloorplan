@@ -1435,114 +1435,6 @@
       }
       const s = worldToScreen(wallStart.x, wallStart.y);
       const e = worldToScreen(endPt.x, endPt.y);
-      const dx = e.x - s.x, dy = e.y - s.y;
-      const len = Math.hypot(dx, dy);
-      if (len > 1) {
-        const thickness = Math.max(20 * zoom, 4);
-        const nx = (-dy / len) * thickness / 2;
-        const ny = (dx / len) * thickness / 2;
-        ctx.fillStyle = '#3b82f620';
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([6, 4]);
-        ctx.beginPath();
-        ctx.moveTo(s.x + nx, s.y + ny); ctx.lineTo(e.x + nx, e.y + ny);
-        ctx.lineTo(e.x - nx, e.y - ny); ctx.lineTo(s.x - nx, s.y - ny);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      // Dimension label on the wall preview (pill style)
-      const plen = Math.hypot(endPt.x - wallStart.x, endPt.y - wallStart.y);
-      const angle = Math.atan2(endPt.y - wallStart.y, endPt.x - wallStart.x) * 180 / Math.PI;
-      const displayAngle = ((angle % 360) + 360) % 360;
-      const dimMidX = (s.x + e.x) / 2;
-      const dimMidY = (s.y + e.y) / 2;
-      const dimText = formatLength(plen, dimSettings.units);
-      const angleText = shiftDown ? `${Math.round(displayAngle)}° ⇧` : `${Math.round(displayAngle)}°`;
-
-      // Dimension pill (on the wall)
-      ctx.font = 'bold 11px system-ui, sans-serif';
-      const dimTW = ctx.measureText(dimText).width;
-      const dimPW = dimTW + 12;
-      const dimPH = 18;
-      ctx.fillStyle = '#1e293b';
-      ctx.beginPath();
-      ctx.roundRect(dimMidX - dimPW / 2, dimMidY - dimPH / 2 - 12, dimPW, dimPH, dimPH / 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(dimText, dimMidX, dimMidY - 12);
-
-      // Angle indicator near cursor
-      const angleTW = ctx.measureText(angleText).width;
-      const anglePW = angleTW + 12;
-      const anglePH = 18;
-      const angleX = e.x + 20;
-      const angleY = e.y - 20;
-      ctx.fillStyle = shiftDown ? '#7c3aed' : '#3b82f6';
-      ctx.beginPath();
-      ctx.roundRect(angleX - anglePW / 2, angleY - anglePH / 2, anglePW, anglePH, anglePH / 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(angleText, angleX, angleY);
-
-      // Snap indicator — green ring when snapping to existing endpoint
-      if ((endPt as any).snappedToEndpoint) {
-        ctx.strokeStyle = '#22c55e';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = '#22c55e40';
-        ctx.fill();
-      }
-
-      // Wall extension snap indicator — magenta ring + highlight target wall when snapping to wall segment
-      if ((endPt as any).snappedToWall && (endPt as any).snappedWallId && currentFloor) {
-        // Draw snap point indicator
-        ctx.strokeStyle = '#ec4899';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = '#ec489940';
-        ctx.fill();
-        // Draw crosshair at snap point
-        ctx.strokeStyle = '#ec4899';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(e.x - 12, e.y); ctx.lineTo(e.x + 12, e.y);
-        ctx.moveTo(e.x, e.y - 12); ctx.lineTo(e.x, e.y + 12);
-        ctx.stroke();
-        // Highlight the target wall
-        const targetWall = currentFloor.walls.find(w => w.id === (endPt as any).snappedWallId);
-        if (targetWall) {
-          const tw1 = worldToScreen(targetWall.start.x, targetWall.start.y);
-          const tw2 = worldToScreen(targetWall.end.x, targetWall.end.y);
-          ctx.strokeStyle = '#ec4899';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([6, 3]);
-          ctx.beginPath();
-          ctx.moveTo(tw1.x, tw1.y);
-          ctx.lineTo(tw2.x, tw2.y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-        // "Extend to wall" tooltip
-        ctx.font = 'bold 10px system-ui, sans-serif';
-        const extText = 'Snap to wall';
-        const extTW = ctx.measureText(extText).width;
-        ctx.fillStyle = '#ec4899';
-        ctx.beginPath();
-        ctx.roundRect(e.x - extTW / 2 - 6, e.y + 14, extTW + 12, 16, 8);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(extText, e.x, e.y + 22);
-      }
     }
 
     // Marquee selection rectangle
@@ -1706,6 +1598,9 @@
       currentTool = t;
       textAnnotationMode = t === 'text';
       if (t !== 'text') { editingTextAnnotationId = null; }
+      // Reset wall drawing state when tool changes to ensure a fresh start
+      wallStart = null;
+      wallSequenceFirst = null;
       markDirty();
     });
     const unsub7 = detectedRoomsStore.subscribe((rooms) => { if (rooms.length > 0) detectedRooms = rooms; markDirty(); });
@@ -1934,6 +1829,29 @@
 
   // pointInPolygon, pointToSegmentDist, positionOnWall imported from hitTesting.ts
 
+  function exitWallTool() {
+    wallStart = null;
+    wallSequenceFirst = null;
+    selectedTool.set('select');
+    panMode.set(true);
+    markDirty();
+  }
+
+  function finishWallDrawing() {
+    exitWallTool();
+  }
+
+  function closeWallLoop() {
+    if (wallStart && wallSequenceFirst && Math.hypot(wallStart.x - wallSequenceFirst.x, wallStart.y - wallSequenceFirst.y) > 5) {
+      addWall(wallStart, wallSequenceFirst);
+    }
+    exitWallTool();
+  }
+
+  function cancelWallDrawing() {
+    exitWallTool();
+  }
+
   function onMouseDown(e: MouseEvent) {
     markDirty();
     // Pan if: middle mouse OR (left mouse AND (space down OR shift-drag in select))
@@ -2142,8 +2060,7 @@
         // Auto-close: if clicking near the first point of the sequence, close the loop
         if (wallSequenceFirst && Math.hypot(endPt.x - wallSequenceFirst.x, endPt.y - wallSequenceFirst.y) < 20 && Math.hypot(wallStart.x - wallSequenceFirst.x, wallStart.y - wallSequenceFirst.y) > 20) {
           addWall(wallStart, wallSequenceFirst);
-          wallStart = null;
-          wallSequenceFirst = null;
+          exitWallTool();
         } else if (Math.hypot(endPt.x - wallStart.x, endPt.y - wallStart.y) > 5) {
           addWall(wallStart, endPt);
           wallStart = endPt;
@@ -2406,8 +2323,7 @@
       if (Math.hypot(wallStart.x - wallSequenceFirst.x, wallStart.y - wallSequenceFirst.y) > 5) {
         addWall(wallStart, wallSequenceFirst);
       }
-      wallStart = null;
-      wallSequenceFirst = null;
+      exitWallTool();
     }
   }
 
@@ -2953,7 +2869,9 @@
 
     // Canvas-specific Escape handling (before global shortcut eats it)
     if (e.code === 'Escape') {
-      wallStart = null; wallSequenceFirst = null;
+      if (currentTool === 'wall') {
+        exitWallTool();
+      }
       placingFurnitureId.set(null);
       placingRotation.set(0);
       editingTextAnnotationId = null;
@@ -3489,31 +3407,6 @@
         <div class="text-sm font-medium text-gray-500">Start building your floor plan</div>
         <div class="text-xs text-gray-400 mt-1">Draw walls with <span class="font-mono bg-gray-100 px-1 rounded">W</span> or drag items from the sidebar</div>
       </div>
-    </div>
-  {/if}
-  {#if currentTool === 'wall' && wallStart}
-    <div class="absolute top-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-3 py-1 rounded-full text-xs shadow">
-      Click to add wall segment · Double-click to finish · C to close loop · Esc to cancel
-    </div>
-  {/if}
-  {#if currentPlacingId && currentTool === 'furniture'}
-    <div class="absolute top-2 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs shadow">
-      Click to place · Scroll or R to rotate ({currentPlacingRotation}°) · Esc to cancel
-    </div>
-  {/if}
-  {#if measuring}
-    <div class="absolute top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white px-3 py-1 rounded-full text-xs shadow">
-      Right-click two points to measure · M to exit · Esc to cancel
-    </div>
-  {/if}
-  {#if textAnnotationMode}
-    <div class="absolute top-2 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-3 py-1 rounded-full text-xs shadow">
-      Click to place text label · Esc to cancel
-    </div>
-  {/if}
-  {#if annotating}
-    <div class="absolute top-2 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-3 py-1 rounded-full text-xs shadow">
-      {annotationStart ? 'Click second point to create annotation' : 'Click first point'} · N to exit · Esc to cancel
     </div>
   {/if}
 </div>

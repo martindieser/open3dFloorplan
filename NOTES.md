@@ -30,6 +30,8 @@ BUGS
 AGREGADOS
 ================================================
 
+- cambiar draw para que no tenga anotaciones innecesarias y que no se preserve el estado entre varios usos de la herramienta.
+
 - previsualiacion de puertas y ventanas al ponerlas en mobile
 
 - flatten en el topbar del mobile layout

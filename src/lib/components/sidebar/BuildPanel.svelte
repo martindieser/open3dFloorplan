@@ -59,6 +59,10 @@
     draggingFromLibrary.set(null);
     selectedElementId.set(null);
     panMode.set(nextTool === 'select');
+
+    if ($isMobile && nextTool === 'wall') {
+      isBottomPanelOpen.set(false);
+    }
   }
 
   let currentTool = $state<Tool>('select');
