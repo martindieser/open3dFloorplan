@@ -26,28 +26,23 @@
   });
 
   onMount(() => {
-    (async () => {
-      const url = new URL(window.location.href);
-      const id = url.searchParams.get('id');
-      if (id) {
-        const project = await localStore.load(id);
-        if (project) {
-          currentProject.set(project);
-        } else {
-          const p = createDefaultProject();
-          currentProject.set(p);
-          await localStore.save(p);
-          history.replaceState(null, '', `/editor?id=${p.id}`);
-        }
+  (async () => {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get('id');
+    if (id) {
+      const project = await localStore.load(id);
+      if (project) {
+        currentProject.set(project);
       } else {
-        const p = createDefaultProject();
-        currentProject.set(p);
-        await localStore.save(p);
-        history.replaceState(null, '', `/editor?id=${p.id}`);
+        // If ID provided but not found, just stay ready (don't force redirect in integration)
+        console.log('[Editor] Project ID not found in local storage.');
       }
-      ready = true;
-    })();
-
+    } else {
+      // No ID: Normal web would create one, but for integration we just wait.
+      console.log('[Editor] Passive mode: waiting for loadFromKotlin call.');
+    }
+    ready = true;
+  })();
     // Auto-save on every project change (debounced)
     let saveTimeout: ReturnType<typeof setTimeout>;
     const unsub = currentProject.subscribe((p) => {

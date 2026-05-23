@@ -1,7 +1,7 @@
 <script lang="ts">
   import { isMobile, draggingFromLibrary } from '$lib/stores/ui';
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, setBackgroundImage, canvasZoom, canvasCamX, canvasCamY, triggerZoomToFit, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, createGroup, ungroupElements, findGroupForElement } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, setBackgroundImage, canvasZoom, canvasCamX, canvasCamY, triggerZoomToFit, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, createGroup, ungroupElements, findGroupForElement, isReadOnly } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine, Measurement, Annotation, TextAnnotation } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -1857,15 +1857,14 @@
     // Pan if: middle mouse OR (left mouse AND (space down OR shift-drag in select))
     // $panMode is handled as a fallback if nothing else is hit
     const isPanningRequest = e.button === 1 || (e.button === 0 && (spaceDown || (e.shiftKey && currentTool === 'select')));
-    
-    if (isPanningRequest) {
+
+    if (isPanningRequest || $isReadOnly) {
       isPanning = true;
       panStartX = e.clientX;
       panStartY = e.clientY;
       return;
     }
     if (e.button !== 0) return;
-
     const rect = canvas.getBoundingClientRect();
     const wp = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
     const tool = currentTool;
@@ -3184,7 +3183,7 @@
       const hitObj = findDoorAt(wp) || findWindowAt(wp) || findColumnAt(wp) || findStairAt(wp) || findFurnitureAt(wp) || findWallAt(wp) || findRoomLabelAt(wp) || findRoomAt(wp);
 
       // Long press detection for mobile to enter pan mode (only if touching empty space)
-      if (e.pointerType === 'touch' && !hitHandle && !hitObj) {
+      if (!$isReadOnly && e.pointerType === 'touch' && !hitHandle && !hitObj) {
         longPressTimeout = setTimeout(() => {
           // Cancel any active drag that might have started
           draggingFurnitureId = null;

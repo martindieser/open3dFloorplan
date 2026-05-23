@@ -16,6 +16,12 @@
   let showTemplateModal = $state(false);
 
   onMount(async () => {
+    // If running inside Kotlin WebView, skip project list and go to editor
+    if ((window as any).AndroidInterface) {
+      goto('/editor');
+      return;
+    }
+
     projects = await localStore.list();
     // Sort by most recent
     projects.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());

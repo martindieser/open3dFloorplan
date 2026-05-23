@@ -1,6 +1,6 @@
 <script lang="ts">
   import { isMobile } from '$lib/stores/ui';
-  import { viewMode } from '$lib/stores/project';
+  import { viewMode, isReadOnly } from '$lib/stores/project';
   import TopBar from '$lib/components/toolbar/TopBar.svelte';
   import MobileToolbar from '$lib/components/layout/MobileToolbar.svelte';
   import BuildPanel from '$lib/components/sidebar/BuildPanel.svelte';
@@ -20,7 +20,7 @@
   {/if}
 
   <div class="flex flex-1 overflow-hidden relative">
-    {#if !$isMobile}
+    {#if !$isMobile && !$isReadOnly}
       <ResponsiveSidebar>
         <BuildPanel />
       </ResponsiveSidebar>
@@ -30,11 +30,11 @@
       {@render children?.()}
     </AdaptiveCanvas>
 
-    {#if !$isMobile}
+    {#if !$isMobile && !$isReadOnly}
       <PropertiesPanel is3D={$viewMode === '3d'} />
     {/if}
 
-    {#if $isMobile}
+    {#if $isMobile && !$isReadOnly}
       <BottomPanel />
     {/if}
   </div>
