@@ -12,17 +12,6 @@
 </script>
 
 <div class="h-12 bg-slate-900 flex items-center px-2 gap-1 shrink-0 z-50 safe-top border-b border-white/5">
-  {#if !$isIntegrationMode}
-    <!-- Back to Projects -->
-    <a
-      href="/"
-      class="p-2 text-white/70 active:text-white transition-colors"
-      aria-label="Back to Projects"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-    </a>
-  {/if}
-
   <div class="flex-1 min-w-0 px-1">
     <h1 class="text-white font-medium text-xs truncate opacity-80">{projectName}</h1>
   </div>
