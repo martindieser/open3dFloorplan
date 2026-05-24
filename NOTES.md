@@ -7,10 +7,13 @@
 
 - sacar capacidad para dibujar columnas?
 
+- que son las lineas random que podes poner con la escala?, se pueden sacar?
 
 
 BUGS
 ====================================================================
+
+- los colores no funcionan en algunos elementos
 
 - change walls into a default thickness of 8
 
@@ -18,14 +21,10 @@ BUGS
 - multiple toggle dentro del panel menu (solo en desktop al parecer),
 - no esta más pero si hay bug al tocar una estructura y draw walls, o asi, y las doors no tienen previsualizacion
 
-- si se esta en pan mode no s pueden poner objetos??
 
+- si se toca una casa rapido en touch mode se queda re bug y te deja mover todo lo que es molesto // a veces te mueve de forma random a lugares random items? - no pasa tanto como antes
 
-- si se toca una casa rapido en touch mode se queda re bug y te deja mover todo lo que es molesto
-
-- a veces te mueve de forma random a lugares random items?
-
-- bug al colocar objeto cerca de las paredes, aparece dos posibles y te termina colocando dos objetos
+- bug al colocar objeto cerca de las paredes, aparece dos posibles y te termina colocando dos objetos - FIXED aparentenemente
 
 AGREGADOS
 ================================================
@@ -45,6 +44,8 @@ AGREGADOS
 
 ================================================
 FIXED
+
+- si se esta en pan mode no s pueden poner objetos??
 
 - drag & drop de room templates no funr
 

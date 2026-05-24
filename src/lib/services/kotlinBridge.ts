@@ -1,11 +1,10 @@
-import { currentProject, loadProject, isReadOnly, isIntegrationMode, viewMode, createDefaultProject } from '$lib/stores/project';
+import { currentProject, loadProject, isReadOnly, viewMode, createDefaultProject } from '$lib/stores/project';
 import { get } from 'svelte/store';
 import { goto } from '$app/navigation';
 
 interface BridgeConfig {
   viewMode?: '2d' | '3d';
   readOnly?: boolean;
-  integrationMode?: boolean;
 }
 
 /**
@@ -33,35 +32,68 @@ export class KotlinBridgeService {
     if (this.isInitialized) return;
 
     console.log('[KotlinBridge] Initializing bridge...');
-// 1. Expose function for Kotlin to inject data
-(window as any).loadFromKotlin = (jsonString: string | null, config?: BridgeConfig) => {
-  try {
-    console.log('[KotlinBridge] Received load request from Kotlin', { hasData: !!jsonString, config });
+    // 1. Expose function for Kotlin to inject data
+    (window as any).loadFromKotlin = (jsonString: string | null, config?: BridgeConfig) => {
+      try {
+        const readOnly = config?.readOnly === true; // Strict check to avoid accidental locking
+        const vMode = config?.viewMode ?? '2d';
 
-    // Apply configuration first
-    isReadOnly.set(config?.readOnly ?? false);
-    isIntegrationMode.set(config?.integrationMode ?? true);
-    if (config?.viewMode) viewMode.set(config.viewMode);
+        console.log('[KotlinBridge] Incoming load request:', { 
+          hasJson: !!jsonString, 
+          jsonLength: jsonString?.length ?? 0,
+          readOnly, 
+          vMode 
+        });
 
-    // Decide what to load
-    if (!jsonString || jsonString.trim() === "" || jsonString === "null") {
-      console.log('[KotlinBridge] Creating new default project');
-      loadProject(createDefaultProject());
-    } else {
-      console.log('[KotlinBridge] Loading provided project JSON');
-      const project = JSON.parse(jsonString);
-      loadProject(project);
-    }
+        // Apply configuration
+        isReadOnly.set(readOnly);
+        viewMode.set(vMode);
 
-    return { success: true };
-  } catch (e) {
-    console.error('[KotlinBridge] Error in loadFromKotlin', e);
-    return { success: false, error: String(e) };
-  }
-};
+        if (readOnly) {
+          console.warn('[KotlinBridge] Editor is now in READ-ONLY mode. Placement disabled.');
+        } else {
+          console.log('[KotlinBridge] Editor is in EDIT mode. Placement enabled.');
+        }
+
+        // Decide what to load
+        let project: any = null;
+        if (jsonString && jsonString.trim() !== "" && jsonString !== "null") {
+          try {
+            project = JSON.parse(jsonString);
+          } catch (e) {
+            console.error('[KotlinBridge] Failed to parse project JSON', e);
+          }
+        }
+
+        // Validate project structure: if it's empty or missing floors, use default
+        if (!project || !project.floors || !Array.isArray(project.floors)) {
+          console.log('[KotlinBridge] Data is empty or invalid structure. Creating new default project');
+          loadProject(createDefaultProject());
+        } else {
+          console.log('[KotlinBridge] Loading provided project JSON:', project.name);
+          loadProject(project);
+        }
+        
+        return { success: true, settings: { readOnly, vMode } };
+      } catch (e) {
+        console.error('[KotlinBridge] Error in loadFromKotlin', e);
+        return { success: false, error: String(e) };
+      }
+    };
     (window as any).pingKotlinBridge = () => {
       return "pong";
     };
+
+    // Notify Kotlin that the bridge is initialized and ready to receive data
+    const android = (window as any).AndroidInterface;
+    if (android && android.onEditorReady) {
+      console.log('[KotlinBridge] Notifying Kotlin that bridge is ready');
+      try {
+        android.onEditorReady();
+      } catch (e) {
+        console.error('[KotlinBridge] Failed to call AndroidInterface.onEditorReady', e);
+      }
+    }
 
     // 3. Subscribe to currentProject changes to notify Kotlin (Persistence)
     currentProject.subscribe((project) => {

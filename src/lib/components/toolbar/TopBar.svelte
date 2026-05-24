@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { currentProject, viewMode, undo, redo, setActiveFloor, updateProjectName, createDefaultProject, panMode, showFurnitureStore, layerVisibility, isReadOnly, isIntegrationMode } from '$lib/stores/project';
+  import { currentProject, viewMode, undo, redo, setActiveFloor, updateProjectName, createDefaultProject, panMode, showFurnitureStore, layerVisibility, isReadOnly } from '$lib/stores/project';
   import SettingsDialog from './SettingsDialog.svelte';
 
   let settingsOpen = $state(false);
@@ -9,7 +9,6 @@
   let mode = $state<'2d' | '3d'>('2d');
   let floors: any[] = $state([]);
   let activeFloorId = $state('');
-  let editingName = $state(false);
 
   currentProject.subscribe((p) => {
     if (p) {
@@ -24,42 +23,15 @@
     viewMode.set(m);
   }
 
-  function onNameBlur() {
-    editingName = false;
-    updateProjectName(projectName);
-  }
-
-  function onNameKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-  }
-
   onMount(() => {
     // No-op for now as save/export features are removed
   });
 </script>
 
 <div class="h-12 bg-gradient-to-r from-slate-800 to-slate-700 flex items-center px-4 gap-3 shrink-0 shadow-sm">
-  {#if !$isIntegrationMode}
-    {#if editingName}
-      <input
-        type="text"
-        bind:value={projectName}
-        onblur={onNameBlur}
-        onkeydown={onNameKeydown}
-        class="bg-white/20 text-white font-semibold px-2 py-0.5 rounded border border-white/30 outline-none text-sm w-40"
-      />
-    {:else}
-      <button
-        class="font-semibold text-white text-sm hover:bg-white/10 px-2 py-0.5 rounded transition-colors"
-        onclick={() => editingName = true}
-        title="Click to rename"
-      >{projectName}</button>
-    {/if}
-  {:else}
-    <div class="font-semibold text-white text-sm py-0.5 rounded transition-colors select-none">
-      {projectName}
-    </div>
-  {/if}
+  <div class="font-semibold text-white text-sm py-0.5 rounded transition-colors select-none">
+    {projectName}
+  </div>
 
   <div class="flex-1"></div>
 

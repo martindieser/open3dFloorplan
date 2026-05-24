@@ -6,19 +6,29 @@ This document defines the communication protocol and data schemas between the Ko
 
 The integration uses a **JavaScript Interface** injected into the WebView to allow bi-directional communication.
 
-### Web to Native (Persistence)
-The editor notifies Kotlin whenever the project state changes (autosave pattern).
+### Web to Native (Persistence & Lifecycle)
+The editor notifies Kotlin whenever the project state changes or when the bridge is ready.
 
 - **Interface Name:** `AndroidInterface`
 - **Method:** `saveProject(jsonString: string)`
-- **Behavior:** Triggered on every change to the `currentProject` store.
+  - **Behavior:** Triggered on every change to the `currentProject` store (autosave).
+- **Method:** `onEditorReady()`
+  - **Behavior:** Triggered once when the Svelte editor and bridge functions are fully initialized. **This is the signal to call `loadFromKotlin` from the native side.**
 
 **Kotlin Implementation Snippet:**
 ```kotlin
 webView.addJavascriptInterface(object {
     @JavascriptInterface
     fun saveProject(json: String) {
-        // Save this JSON to local storage (Room, SharedPreferences, or File)
+        // Save this JSON to local storage
+    }
+
+    @JavascriptInterface
+    fun onEditorReady() {
+        // Safe to call window.loadFromKotlin now
+        webView.post {
+            webView.evaluateJavascript("window.loadFromKotlin(json, config)", null)
+        }
     }
 }, "AndroidInterface")
 ```
@@ -31,7 +41,6 @@ Kotlin calls global functions exposed by the editor.
   - **BridgeConfig Object:**
     - `viewMode`: `'2d' | '3d'` (Default: `'2d'`)
     - `readOnly`: `boolean` (Default: `false`) - Disables all editing tools and persistence updates.
-    - `integrationMode`: `boolean` (Default: `true`) - Hides internal UI elements like the "Back to Projects" button.
 
 - **Health Check:** `window.pingKotlinBridge()`
   - Returns `"pong"` if the bridge is initialized.
@@ -50,11 +59,7 @@ To achieve a flicker-free integration, load the editor directly into your WebVie
    webView.evaluateJavascript("window.loadFromKotlin(jsonString, config)", null)
    ```
 
-### UI Customization
-By setting `integrationMode: true` (default when using the bridge):
-- "Back to Projects" navigation link is hidden.
-- Project name editor is disabled (static label only).
-
+### Mode Behavior
 By setting `readOnly: true`:
 - All editing sidebars and toolbars are hidden.
 - Undo/Redo and Settings buttons are removed.
@@ -74,31 +79,3 @@ The editor operates on a `Project` object.
 | `name` | `string` | Display name. |
 | `floors` | `Floor[]` | Array of floor objects. |
 | `activeFloorId` | `string` | ID of the current floor. |
-
-### Example Minimal Project JSON
-```json
-{
-  "id": "p1",
-  "name": "My New Home",
-  "floors": [
-    {
-      "id": "f1",
-      "name": "Ground Floor",
-      "level": 0,
-      "walls": [],
-      "rooms": [],
-      "doors": [],
-      "windows": [],
-      "furniture": [],
-      "stairs": [],
-      "columns": [],
-      "guides": [],
-      "measurements": [],
-      "annotations": [],
-      "textAnnotations": [],
-      "groups": []
-    }
-  ],
-  "activeFloorId": "f1"
-}
-```

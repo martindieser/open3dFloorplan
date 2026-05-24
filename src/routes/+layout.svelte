@@ -3,7 +3,11 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { themePreference } from '$lib/stores/theme';
-  onMount(() => { import('$lib/firebase'); });
+  import { kotlinBridge } from '$lib/services/kotlinBridge';
+
+  onMount(() => { 
+    kotlinBridge.init();
+  });
   let { children } = $props();
 </script>
 

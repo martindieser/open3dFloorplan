@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { currentProject, viewMode, undo, redo, isReadOnly, isIntegrationMode } from '$lib/stores/project';
+  import { currentProject, viewMode, undo, redo, isReadOnly } from '$lib/stores/project';
   import SettingsDialog from '$lib/components/toolbar/SettingsDialog.svelte';
 
   let mode = $derived($viewMode);
