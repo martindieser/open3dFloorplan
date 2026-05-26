@@ -2043,7 +2043,7 @@
         </div>
         <!-- Category tabs -->
         <div class="flex flex-wrap gap-1 p-2 border-b border-white/10">
-          {#each furnitureCategories.filter(c => c !== 'Electrical' && c !== 'Plumbing') as cat}
+          {#each $activeFurnitureCategories.filter(c => c !== 'Electrical' && c !== 'Plumbing') as cat}
             <button
               onclick={() => { furniturePickerCategory = cat; }}
               class="px-2 py-0.5 rounded text-[10px] transition-colors {furniturePickerCategory === cat ? 'bg-green-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white/70'}"
@@ -2052,7 +2052,7 @@
         </div>
         <!-- Items -->
         <div class="overflow-y-auto p-1 flex-1">
-          {#each furnitureCatalog.filter(f => f.category === furniturePickerCategory && !f.symbol) as item}
+          {#each $activeCatalog.filter(f => f.category === furniturePickerCategory && !f.symbol) as item}
             <button
               onclick={() => { selectedCatalogId = item.id; removeGhostPreview(); }}
               class="w-full text-left px-2 py-1.5 rounded text-xs flex items-center gap-2 transition-colors {selectedCatalogId === item.id ? 'bg-green-600/80 text-white' : 'hover:bg-white/10 text-white/80'}"
