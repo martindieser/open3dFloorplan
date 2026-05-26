@@ -1,10 +1,17 @@
 <script lang="ts">
   import { currentProject, viewMode, undo, redo, isReadOnly } from '$lib/stores/project';
   import SettingsDialog from '$lib/components/toolbar/SettingsDialog.svelte';
+  import { kotlinBridge } from '$lib/services/kotlinBridge';
+  import { onMount } from 'svelte';
 
   let mode = $derived($viewMode);
   let projectName = $derived($currentProject?.name || 'Untitled');
   let settingsOpen = $state(false);
+  let hasAndroidInterface = $state(false);
+
+  onMount(() => {
+    hasAndroidInterface = !!(window as any).AndroidInterface;
+  });
 
   function setMode(m: '2d' | '3d') {
     viewMode.set(m);
@@ -12,6 +19,18 @@
 </script>
 
 <div class="h-12 bg-slate-900 flex items-center px-2 gap-1 shrink-0 z-50 safe-top border-b border-white/5">
+  {#if hasAndroidInterface}
+    <button 
+      onclick={() => kotlinBridge.notifyNextStep()}
+      class="ml-1 p-2 text-blue-400 active:text-blue-300 flex items-center gap-1"
+      aria-label="Siguiente"
+    >
+      <span class="text-[10px] font-bold uppercase tracking-wider">Siguiente</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </button>
+    <div class="h-4 w-px bg-white/10 mx-1"></div>
+  {/if}
+
   <div class="flex-1 min-w-0 px-1">
     <h1 class="text-white font-medium text-xs truncate opacity-80">{projectName}</h1>
   </div>

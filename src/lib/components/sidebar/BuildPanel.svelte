@@ -4,7 +4,7 @@
   import type { Door, Window as Win } from '$lib/models/types';
   import { roomPresets, placePreset } from '$lib/utils/roomPresets';
   import { roomTemplates, placeRoomTemplate } from '$lib/utils/roomTemplates';
-  import { furnitureCatalog, furnitureCategories } from '$lib/utils/furnitureCatalog';
+  import { activeCatalog, activeFurnitureCategories } from '$lib/utils/furnitureCatalog';
   import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
   import { getModelFile, generateThumbnail, getThumbnail, preloadThumbnails } from '$lib/utils/furnitureThumbnails';
   import { onMount } from 'svelte';
@@ -31,7 +31,7 @@
 
   onMount(() => {
     // Preload thumbnails, re-render as each completes
-    const files = new Set(furnitureCatalog.map(f => getModelFile(f.id)).filter(Boolean) as string[]);
+    const files = new Set($activeCatalog.map(f => getModelFile(f.id)).filter(Boolean) as string[]);
     for (const file of files) {
       generateThumbnail(file).then(() => { thumbsReady++; });
     }

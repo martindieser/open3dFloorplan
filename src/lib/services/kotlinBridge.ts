@@ -1,10 +1,13 @@
 import { currentProject, loadProject, isReadOnly, viewMode, createDefaultProject } from '$lib/stores/project';
 import { get } from 'svelte/store';
 import { goto } from '$app/navigation';
+import { activeCatalog } from '$lib/utils/furnitureCatalog';
+import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
 
 interface BridgeConfig {
   viewMode?: '2d' | '3d';
   readOnly?: boolean;
+  catalog?: FurnitureDef[]; // renamed for clarity: this is THE catalog for the session
 }
 
 /**
@@ -35,24 +38,30 @@ export class KotlinBridgeService {
     // 1. Expose function for Kotlin to inject data
     (window as any).loadFromKotlin = (jsonString: string | null, config?: BridgeConfig) => {
       try {
-        const readOnly = config?.readOnly === true; // Strict check to avoid accidental locking
+        const readOnly = config?.readOnly === true;
         const vMode = config?.viewMode ?? '2d';
 
         console.log('[KotlinBridge] Incoming load request:', { 
           hasJson: !!jsonString, 
-          jsonLength: jsonString?.length ?? 0,
           readOnly, 
-          vMode 
+          vMode,
+          catalogCount: config?.catalog?.length ?? 0
         });
 
         // Apply configuration
         isReadOnly.set(readOnly);
         viewMode.set(vMode);
+        
+        // Populate the catalog (Blank slate unless Kotlin provides one)
+        if (config?.catalog) {
+          console.log(`[KotlinBridge] Setting session catalog with ${config.catalog.length} items`);
+          activeCatalog.set(config.catalog);
+        } else {
+          activeCatalog.set([]); 
+        }
 
         if (readOnly) {
-          console.warn('[KotlinBridge] Editor is now in READ-ONLY mode. Placement disabled.');
-        } else {
-          console.log('[KotlinBridge] Editor is in EDIT mode. Placement enabled.');
+          console.warn('[KotlinBridge] Editor is now in READ-ONLY mode.');
         }
 
         // Decide what to load
@@ -65,12 +74,10 @@ export class KotlinBridgeService {
           }
         }
 
-        // Validate project structure: if it's empty or missing floors, use default
+        // Validate project structure: if it's empty or invalid structure, use default
         if (!project || !project.floors || !Array.isArray(project.floors)) {
-          console.log('[KotlinBridge] Data is empty or invalid structure. Creating new default project');
           loadProject(createDefaultProject());
         } else {
-          console.log('[KotlinBridge] Loading provided project JSON:', project.name);
           loadProject(project);
         }
         
@@ -80,6 +87,7 @@ export class KotlinBridgeService {
         return { success: false, error: String(e) };
       }
     };
+
     (window as any).pingKotlinBridge = () => {
       return "pong";
     };
@@ -111,6 +119,24 @@ export class KotlinBridgeService {
     });
 
     this.isInitialized = true;
+  }
+
+  /**
+   * Notifies Kotlin that the user wants to proceed to the next step.
+   * This is typically used to close the WebView and continue the flow in the native app.
+   */
+  public notifyNextStep() {
+    const android = (window as any).AndroidInterface;
+    if (android && android.onNextStep) {
+      console.log('[KotlinBridge] Notifying Kotlin of next step');
+      try {
+        android.onNextStep();
+      } catch (e) {
+        console.error('[KotlinBridge] Failed to call AndroidInterface.onNextStep', e);
+      }
+    } else {
+      console.warn('[KotlinBridge] Cannot notify next step: AndroidInterface.onNextStep not found');
+    }
   }
 
   /**

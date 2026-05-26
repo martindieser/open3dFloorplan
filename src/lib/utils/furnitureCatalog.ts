@@ -1,3 +1,5 @@
+import { writable, derived } from 'svelte/store';
+
 export interface FurnitureDef {
   id: string;
   name: string;
@@ -10,9 +12,13 @@ export interface FurnitureDef {
   height: number;
   /** If set, this is a 2D-only architectural symbol (not rendered in 3D) */
   symbol?: boolean;
+  /** Optional URL to a custom GLB model (injected from Kotlin/Native) */
+  modelUrl?: string;
 }
 
 export const furnitureCatalog: FurnitureDef[] = [
+  // ...
+ (all existing items)
   // Living Room
   { id: 'sofa', name: 'Sofa', category: 'Living Room', icon: '🛋️', color: '#a78bfa', width: 200, depth: 90, height: 80 },
   { id: 'loveseat', name: 'Loveseat', category: 'Living Room', icon: '🛋️', color: '#8b5cf6', width: 140, depth: 85, height: 80 },
@@ -245,8 +251,31 @@ export const furnitureCatalog: FurnitureDef[] = [
   { id: 'sym_gas_line', name: 'Gas Line', category: 'Plumbing', icon: '⛽', color: '#f59e0b', width: 15, depth: 15, height: 0, symbol: true },
 ];
 
+// --- Dynamic Catalog Stores ---
+export const allowedFurnitureIds = writable<string[] | null>(null);
+export const customFurnitureCatalog = writable<FurnitureDef[]>([]);
+
+export const activeCatalog = derived(
+  [allowedFurnitureIds, customFurnitureCatalog],
+  ([$allowed, $custom]) => {
+    const fullCatalog = [...furnitureCatalog, ...$custom];
+    if (!$allowed) return fullCatalog;
+    return fullCatalog.filter(item => $allowed.includes(item.id));
+  }
+);
+
 export function getCatalogItem(id: string): FurnitureDef | undefined {
+  // Check custom catalog first, then static
+  let item: FurnitureDef | undefined;
+  customFurnitureCatalog.subscribe(custom => {
+    item = custom.find(f => f.id === id);
+  })();
+  if (item) return item;
   return furnitureCatalog.find(f => f.id === id);
 }
+
+export const activeFurnitureCategories = derived(activeCatalog, ($catalog) => {
+  return [...new Set($catalog.map(f => f.category))];
+});
 
 export const furnitureCategories = [...new Set(furnitureCatalog.map(f => f.category))];

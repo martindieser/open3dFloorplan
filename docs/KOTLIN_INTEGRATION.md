@@ -14,6 +14,8 @@ The editor notifies Kotlin whenever the project state changes or when the bridge
   - **Behavior:** Triggered on every change to the `currentProject` store (autosave).
 - **Method:** `onEditorReady()`
   - **Behavior:** Triggered once when the Svelte editor and bridge functions are fully initialized. **This is the signal to call `loadFromKotlin` from the native side.**
+- **Method:** `onNextStep()`
+  - **Behavior:** Triggered when the user clicks the "Siguiente" button. Use this to advance the application flow (e.g., closing the WebView).
 
 **Kotlin Implementation Snippet:**
 ```kotlin
@@ -29,6 +31,11 @@ webView.addJavascriptInterface(object {
         webView.post {
             webView.evaluateJavascript("window.loadFromKotlin(json, config)", null)
         }
+    }
+
+    @JavascriptInterface
+    fun onNextStep() {
+        // User clicked "Next", handle navigation/closure
     }
 }, "AndroidInterface")
 ```

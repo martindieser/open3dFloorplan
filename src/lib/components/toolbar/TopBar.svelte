@@ -2,8 +2,10 @@
   import { onMount } from 'svelte';
   import { currentProject, viewMode, undo, redo, setActiveFloor, updateProjectName, createDefaultProject, panMode, showFurnitureStore, layerVisibility, isReadOnly } from '$lib/stores/project';
   import SettingsDialog from './SettingsDialog.svelte';
+  import { kotlinBridge } from '$lib/services/kotlinBridge';
 
   let settingsOpen = $state(false);
+  let hasAndroidInterface = $state(false);
 
   let projectName = $state('');
   let mode = $state<'2d' | '3d'>('2d');
@@ -24,7 +26,7 @@
   }
 
   onMount(() => {
-    // No-op for now as save/export features are removed
+    hasAndroidInterface = !!(window as any).AndroidInterface;
   });
 </script>
 
@@ -34,6 +36,17 @@
   </div>
 
   <div class="flex-1"></div>
+
+  {#if hasAndroidInterface}
+    <button 
+      onclick={() => kotlinBridge.notifyNextStep()}
+      class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-colors shadow-sm flex items-center gap-1.5"
+    >
+      <span>Siguiente</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </button>
+    <div class="h-5 w-px bg-white/20 mx-1"></div>
+  {/if}
 
   {#if !$isReadOnly}
     <button onclick={undo} class="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors" title="Undo (Ctrl+Z)" aria-label="Undo">

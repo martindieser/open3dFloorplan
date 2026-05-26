@@ -8,7 +8,7 @@
   import * as THREE from 'three';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import MaterialPicker from './MaterialPicker.svelte';
-  import { getCatalogItem, furnitureCatalog, furnitureCategories } from '$lib/utils/furnitureCatalog';
+  import { getCatalogItem, activeCatalog, activeFurnitureCategories } from '$lib/utils/furnitureCatalog';
   import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
   import { createFurnitureModel } from '$lib/utils/furnitureModels3d';
   import { createFurnitureModelWithGLB } from '$lib/utils/furnitureModelLoader';
