@@ -40,17 +40,39 @@ webView.addJavascriptInterface(object {
 }, "AndroidInterface")
 ```
 
-### Native to Web (Loading/Actions)
+### Native to Web (Actions)
 Kotlin calls global functions exposed by the editor.
 
-- **Load Project:** `window.loadFromKotlin(jsonString: string, config?: BridgeConfig)`
-  - Resets the editor state and history with the provided JSON.
+- **Load Project:** `window.loadFromKotlin(jsonString: string | null, config: BridgeConfig)`
+  - Initializes the editor with a project and its object library.
   - **BridgeConfig Object:**
     - `viewMode`: `'2d' | '3d'` (Default: `'2d'`)
-    - `readOnly`: `boolean` (Default: `false`) - Disables all editing tools and persistence updates.
+    - `readOnly`: `boolean` (Default: `false`)
+    - `catalog`: `FurnitureDef[]` — **Mandatory.** Since the editor has no internal library, this provides the tools available in the sidebar and 3D view.
 
-- **Health Check:** `window.pingKotlinBridge()`
-  - Returns `"pong"` if the bridge is initialized.
+- **Health Check:** `window.pingKotlinBridge()` -> `"pong"`
+
+---
+
+## 2. Asset Management & External Models
+
+The editor is a **generic shell**. It contains no hardcoded 3D models.
+
+### Local & Remote GLB Loading
+Every item in the `catalog` that isn't a 2D symbol should provide a `modelUrl`.
+- **Remote:** `https://your-server.com/models/chair.glb`
+- **Local:** `file:///android_asset/models/table.glb` (or internal storage paths).
+
+**Critical Android Configuration:**
+To support `file://` assets from internal storage or assets folder, the WebView must be configured as follows:
+```kotlin
+webView.settings.apply {
+    allowFileAccess = true
+    allowContentAccess = true
+    allowFileAccessFromFileURLs = true
+    allowUniversalAccessFromFileURLs = true
+}
+```
 
 ---
 

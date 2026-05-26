@@ -1,6 +1,18 @@
 # Object Standardization & Dynamic Injection
 
-This document defines the standards for objects (furniture, fixtures, symbols) that can be placed in the 3D Floor Plan editor. The editor functions as a **generic rendering shell**, meaning it relies on the host application (Kotlin/Native) to provide object definitions and assets at runtime.
+This document defines the standards for objects (furniture, fixtures, symbols) that can be placed in the 3D Floor Plan editor.
+
+## Design Rationale: The "Generic Engine" Architecture
+
+The editor has been intentionally designed as a **generic rendering shell**. This means it contains no hardcoded furniture library or internal 3D assets. This decision was made to support a robust integration with native mobile applications (Kotlin/Android) and AI-driven workflows (YOLO).
+
+### Key Benefits:
+1. **Single Source of Truth (Host-Driven):** The host application (Kotlin) has absolute authority over which objects exist. This allows the native app to serve different catalogs based on user context (e.g., "Bathroom Mode" vs. "Landscaping Mode").
+2. **Seamless YOLO Integration:** Computer vision models often have specific class labels. By externalizing the catalog, Kotlin can map YOLO detections to object definitions in real-time without requiring changes to the web codebase.
+3. **Asset Decoupling:** 3D models (`.glb`) are loaded via URLs (`modelUrl`). This allows the native app to download new assets from cloud storage (e.g., Firebase) or load them from local device storage, keeping the web application lightweight.
+4. **Zero-Deploy Updates:** Adding a new piece of furniture to the system only requires updating the configuration on the Kotlin side. No web build or redeployment is necessary.
+
+---
 
 ## Object Definition Standard
 
