@@ -40,7 +40,7 @@
   {#if hasAndroidInterface}
     <button 
       onclick={() => kotlinBridge.notifyNextStep()}
-      class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-colors shadow-sm flex items-center gap-1.5"
+      class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-full transition-all active:scale-95 shadow-sm flex items-center gap-1.5"
     >
       <span>Siguiente</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>

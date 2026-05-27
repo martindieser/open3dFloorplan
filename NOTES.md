@@ -1,4 +1,6 @@
 
+- TODO: analizar porque no se adoptan las IDS propias que hay en kotlin para los objetos del proyecto.
+
 - diferencia entre poder dibujar paredes libremente, y hacerlo usando un spawn de rooms directamente,
 
 -> supongo que la herramienta para dibujar paredes es para dibujar paredes internas

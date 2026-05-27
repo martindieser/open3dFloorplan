@@ -22,7 +22,7 @@
   {#if hasAndroidInterface}
     <button 
       onclick={() => kotlinBridge.notifyNextStep()}
-      class="ml-1 p-2 text-blue-400 active:text-blue-300 flex items-center gap-1"
+      class="ml-1 p-2 text-blue-400 hover:text-blue-300 hover:bg-white/5 active:bg-white/10 rounded-lg transition-all active:scale-95 flex items-center gap-1"
       aria-label="Siguiente"
     >
       <span class="text-[10px] font-bold uppercase tracking-wider">Siguiente</span>
