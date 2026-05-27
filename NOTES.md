@@ -1,5 +1,8 @@
 
-- TODO: analizar porque no se adoptan las IDS propias que hay en kotlin para los objetos del proyecto.
+- TODO: analizar porque no se adoptan las IDS propias que hay en kotlin para los objetos del proyecto. -> Eran proyectos viejos guardados en ROOM , nada en el floorplan.
+
+- Decisión de diseño — Asignación de issues de accesibilidad
+Todo problema de accesibilidad se asigna a un único objeto causante. En casos donde la problemática involucra múltiples objetos, el issue se descompone y se asigna individualmente a cada objeto involucrado. Los problemas asociados a espacios vacíos (ej: radio de giro insuficiente) quedan fuera de este modelo por considerarse un caso especial.
 
 - diferencia entre poder dibujar paredes libremente, y hacerlo usando un spawn de rooms directamente,
 

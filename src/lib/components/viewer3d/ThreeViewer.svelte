@@ -48,7 +48,8 @@
   let materialPickerPos = $state<{ x: number; y: number } | null>(null);
   let materialPickerWall = $state<Wall | null>(null);
   // Wall transparency toggle
-  let wallsTransparent = $state(false);
+  let wallsTransparent = $state(true);
+  const DEFAULT_WALL_OPACITY = 0.6;
   // Multi-floor stacking
   let showAllFloors = $state(false);
   const FLOOR_HEIGHT = 300; // cm — wall height + slab thickness
@@ -706,8 +707,9 @@
         
         if (hitFurnitureId) {
           kotlinBridge.notifyObjectSelected(hitFurnitureId, furnitureData);
-          // Visual feedback
-          highlightObject(hitFurnitureId, '#ff0000', 500);
+          selectedElementId.set(hitFurnitureId);
+          const objColor = furnitureData?.color || furnitureData?.catalogItem?.color || '#666666';
+          highlightObject(hitFurnitureId, objColor, 500);
           return;
         }
       }
@@ -1071,9 +1073,27 @@
     clearGroup(wallGroup);
     wallMeshMap.clear();
 
-    const defaultInteriorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-    const defaultExteriorMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc9, roughness: 0.85 });
-    const baseboardMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d4, roughness: 0.7 });
+    const defaultInteriorMat = new THREE.MeshStandardMaterial({ 
+      color: 0xffffff, 
+      roughness: 0.9, 
+      polygonOffset: true, 
+      polygonOffsetFactor: 1, 
+      polygonOffsetUnits: 1,
+      transparent: wallsTransparent,
+      opacity: wallsTransparent ? DEFAULT_WALL_OPACITY : 1.0
+    });
+    const defaultExteriorMat = new THREE.MeshStandardMaterial({ 
+      color: 0xd4cfc9, 
+      roughness: 0.85,
+      transparent: wallsTransparent,
+      opacity: wallsTransparent ? DEFAULT_WALL_OPACITY : 1.0
+    });
+    const baseboardMat = new THREE.MeshStandardMaterial({ 
+      color: 0xe8e0d4, 
+      roughness: 0.7,
+      transparent: wallsTransparent,
+      opacity: wallsTransparent ? DEFAULT_WALL_OPACITY : 1.0
+    });
 
     for (const wall of floor.walls) {
       // Resolve per-side materials: interior and exterior can have independent color/texture
@@ -1082,12 +1102,13 @@
 
       function resolveWallMat(color: string | undefined, texture: string | undefined, fallback: THREE.MeshStandardMaterial, isInterior: boolean = false): THREE.MeshStandardMaterial {
         const polyOff = isInterior ? { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 } : {};
+        const transparency = { transparent: wallsTransparent, opacity: wallsTransparent ? DEFAULT_WALL_OPACITY : 1.0 };
         if (texture) {
           const tex = generateWallTexture(texture, color || '#888888', wLen, wall.height);
-          return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, ...polyOff });
+          return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, ...polyOff, ...transparency });
         }
         if (color && !DEFAULT_2D_COLORS.includes(color.toLowerCase())) {
-          return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.9, ...polyOff });
+          return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.9, ...polyOff, ...transparency });
         }
         return fallback;
       }
@@ -1104,14 +1125,15 @@
       // Exterior: use exteriorColor/exteriorTexture if set, else fall back to wall.color/wall.texture (auto-darkened)
       const extTex = wall.exteriorTexture === 'none' ? undefined : (wall.exteriorTexture || wall.texture);
       let exteriorMat: THREE.MeshStandardMaterial;
+      const transparency = { transparent: wallsTransparent, opacity: wallsTransparent ? DEFAULT_WALL_OPACITY : 1.0 };
       if (extTex || wall.exteriorColor) {
         exteriorMat = resolveWallMat(wall.exteriorColor, extTex, defaultExteriorMat);
       } else if (wall.texture) {
         const extTex = generateWallTexture(wall.texture, wall.color || '#888888', wLen, wall.height);
-        exteriorMat = new THREE.MeshStandardMaterial({ map: extTex, roughness: 0.85 });
+        exteriorMat = new THREE.MeshStandardMaterial({ map: extTex, roughness: 0.85, ...transparency });
       } else if (wall.color && !DEFAULT_2D_COLORS.includes(wall.color.toLowerCase())) {
         const c = new THREE.Color(wall.color).offsetHSL(0, -0.05, -0.1);
-        exteriorMat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
+        exteriorMat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...transparency });
       } else {
         exteriorMat = defaultExteriorMat;
       }
@@ -1675,7 +1697,10 @@
    * Highlights an object by ID with a specific color.
    * Useful for visual feedback when selected from Kotlin or UI.
    */
-  function highlightObject(id: string, colorHex: string = '#ff0000', durationMs: number = 0) {
+  function highlightObject(id: string, colorHex: string = '#666666', durationMs: number = 0) {
+    if (!wallGroup) return;
+    
+    console.log(`[ThreeViewer] Highlighting object: ${id} with color: ${colorHex}`);
     const color = new THREE.Color(colorHex);
     const affectedMeshes: { mesh: THREE.Mesh, originalEmissive: THREE.Color, originalIntensity: number }[] = [];
 
@@ -1692,7 +1717,7 @@
               originalIntensity: m.emissiveIntensity
             });
             m.emissive.copy(color);
-            m.emissiveIntensity = 0.6;
+            m.emissiveIntensity = 0.15; // Extremely subtle feedback
           }
         });
       }
@@ -1716,6 +1741,8 @@
           markSceneDirty();
         }, durationMs);
       }
+    } else {
+      console.warn(`[ThreeViewer] highlightObject: No mesh found with ID ${id}`);
     }
   }
 
@@ -1796,10 +1823,15 @@
   function toggleWallTransparency() {
     wallsTransparent = !wallsTransparent;
     wallGroup.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
-        child.material.transparent = wallsTransparent;
-        child.material.opacity = wallsTransparent ? 0.15 : 1.0;
-        child.material.needsUpdate = true;
+      if (child instanceof THREE.Mesh) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach(mat => {
+          if (mat instanceof THREE.MeshStandardMaterial) {
+            mat.transparent = wallsTransparent;
+            mat.opacity = wallsTransparent ? DEFAULT_WALL_OPACITY : 1.0;
+            mat.needsUpdate = true;
+          }
+        });
       }
     });
     markSceneDirty();
