@@ -16,26 +16,19 @@ The editor notifies Kotlin whenever the project state changes or when the bridge
   - **Behavior:** Triggered once when the Svelte editor and bridge functions are fully initialized. **This is the signal to call `loadFromKotlin` from the native side.**
 - **Method:** `onNextStep()`
   - **Behavior:** Triggered when the user clicks the "Siguiente" button. Use this to advance the application flow (e.g., closing the WebView).
+- **Method:** `onObjectSelected(jsonString: string)`
+  - **Behavior:** Triggered in **Preview Mode** (`/preview`) when a user touches a 3D object (furniture or wall).
+  - **Payload:** A JSON string containing the object's ID, current properties, and catalog definition.
 
 **Kotlin Implementation Snippet:**
 ```kotlin
 webView.addJavascriptInterface(object {
-    @JavascriptInterface
-    fun saveProject(json: String) {
-        // Save this JSON to local storage
-    }
+    // ... previous methods ...
 
     @JavascriptInterface
-    fun onEditorReady() {
-        // Safe to call window.loadFromKotlin now
-        webView.post {
-            webView.evaluateJavascript("window.loadFromKotlin(json, config)", null)
-        }
-    }
-
-    @JavascriptInterface
-    fun onNextStep() {
-        // User clicked "Next", handle navigation/closure
+    fun onObjectSelected(json: String) {
+        // Parse the JSON and show a BottomSheet or similar UI
+        // val data = JSONObject(json)
     }
 }, "AndroidInterface")
 ```
@@ -50,11 +43,31 @@ Kotlin calls global functions exposed by the editor.
     - `readOnly`: `boolean` (Default: `false`)
     - `catalog`: `FurnitureDef[]` — **Mandatory.** Since the editor has no internal library, this provides the tools available in the sidebar and 3D view.
 
+- **Highlight Object:** `window.highlightObject(id: string, color: string, durationMs: number)`
+  - Highlights an object in the 3D scene by changing its emissive color.
+  - `color`: Hex color string (e.g., `"#FF0000"`).
+  - `durationMs`: How long to keep the highlight before reverting. Set to `0` for permanent.
+
 - **Health Check:** `window.pingKotlinBridge()` -> `"pong"`
 
 ---
 
-## 2. Asset Management & External Models
+## 2. Preview Mode (`/preview`)
+
+The `/preview` route is a specialized, interactive 3D-only view designed for high-end visualization and object inspection.
+
+### Characteristics:
+1. **Interactive Raycasting:** Unlike the editor's 3D mode, touching an object in `/preview` triggers a selection event sent to Kotlin (`onObjectSelected`).
+2. **Minimal UI:** All editing toolbars, sidebars, and overlays are removed. Only the 3D viewer is rendered.
+3. **Forced State:** This route automatically sets `readOnly: true` and `viewMode: '3d'`.
+
+### Recommended Setup for Preview:
+1. **Load URL:** `http://<your-server-address>/preview`
+2. **Inject Data:** Just like the editor, wait for `onEditorReady()` and then call `window.loadFromKotlin()`.
+
+---
+
+## 3. Asset Management & External Models
 
 The editor is a **generic shell**. It contains no hardcoded 3D models.
 

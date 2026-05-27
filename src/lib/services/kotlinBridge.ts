@@ -122,8 +122,24 @@ export class KotlinBridgeService {
   }
 
   /**
+   * Notifies Kotlin that an object (furniture/wall) has been selected in 3D.
+   */
+  public notifyObjectSelected(objectId: string, data: any = {}) {
+    const android = (window as any).AndroidInterface;
+    if (android && android.onObjectSelected) {
+      console.log(`[KotlinBridge] Notifying object selection: ${objectId}`);
+      try {
+        android.onObjectSelected(JSON.stringify({ id: objectId, ...data }));
+      } catch (e) {
+        console.error('[KotlinBridge] Failed to call AndroidInterface.onObjectSelected', e);
+      }
+    } else {
+      console.warn('[KotlinBridge] AndroidInterface.onObjectSelected not found');
+    }
+  }
+
+  /**
    * Notifies Kotlin that the user wants to proceed to the next step.
-   * This is typically used to close the WebView and continue the flow in the native app.
    */
   public notifyNextStep() {
     const android = (window as any).AndroidInterface;

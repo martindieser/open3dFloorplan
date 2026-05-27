@@ -16,6 +16,9 @@
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
   import { getMaterial } from '$lib/utils/materials';
   import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
+  import { kotlinBridge } from '$lib/services/kotlinBridge';
+
+  let { previewMode = false } = $props();
 
   let container: HTMLDivElement;
   let renderer: THREE.WebGLRenderer;
@@ -35,6 +38,7 @@
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   const wallMeshMap = new Map<THREE.Object3D, string>(); // mesh → wallId
+  const furnitureMeshMap = new Map<THREE.Object3D, string>(); // mesh → furnitureId
   let selectedWallId3D: string | null = null;
   const originalEmissive = new Map<THREE.Object3D, THREE.Color>();
 
@@ -615,8 +619,9 @@
       pointerDownPos = { x: e.clientX, y: e.clientY };
     });
     renderer.domElement.addEventListener('pointerup', (e) => {
-      // Only select in edit mode, and only if mouse didn't move much (not a drag/orbit)
-      if (!editMode) return;
+      // Allow selection if in edit mode OR in preview mode
+      if (!editMode && !previewMode) return;
+      
       const dx = e.clientX - pointerDownPos.x;
       const dy = e.clientY - pointerDownPos.y;
       if (Math.hypot(dx, dy) > 5) return;
@@ -627,7 +632,7 @@
       raycaster.setFromCamera(mouse, camera);
 
       // Camera placement mode: first click = position, second click = look-at target
-      if (cameraPlacementMode) {
+      if (editMode && cameraPlacementMode) {
         const hit = new THREE.Vector3();
         if (raycaster.ray.intersectPlane(floorPlane, hit)) {
           if (!cameraPlaced) {
@@ -676,7 +681,37 @@
         return;
       }
 
-      const intersects = raycaster.intersectObjects(wallGroup.children, false);
+      const intersects = raycaster.intersectObjects(wallGroup.children, true);
+      
+      // In preview mode, prioritize furniture selection
+      if (previewMode) {
+        let hitFurnitureId: string | null = null;
+        let furnitureData: any = null;
+        
+        for (const hit of intersects) {
+          if (hit.object.userData.furnitureId) {
+            hitFurnitureId = hit.object.userData.furnitureId;
+            // Find furniture data in current project
+            const floor = get(activeFloor);
+            const furniture = floor?.furniture.find(f => f.id === hitFurnitureId);
+            if (furniture) {
+              furnitureData = {
+                ...furniture,
+                catalogItem: getCatalogItem(furniture.catalogId)
+              };
+            }
+            break;
+          }
+        }
+        
+        if (hitFurnitureId) {
+          kotlinBridge.notifyObjectSelected(hitFurnitureId, furnitureData);
+          // Visual feedback
+          highlightObject(hitFurnitureId, '#ff0000', 500);
+          return;
+        }
+      }
+
       let hitWallId: string | null = null;
       for (const hit of intersects) {
         if (hit.object.userData.wallId) {
@@ -1388,10 +1423,22 @@
         depth: fi.depth ?? cat.depth,
         height: fi.height ?? cat.height,
       };
-      const model = createFurnitureModelWithGLB(fi.catalogId, furnitureDef, () => {
+      // Function to tag all meshes in a model with the furniture ID
+      const tagModel = (m: THREE.Object3D) => {
+        m.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.userData.furnitureId = fi.id;
+            furnitureMeshMap.set(child, fi.id);
+          }
+        });
+      };
+
+      const model = createFurnitureModelWithGLB(fi.catalogId, furnitureDef, (loadedModel) => {
+        tagModel(loadedModel);
         // Re-render when GLB model finishes loading
         if (renderer && scene && camera) renderer.render(scene, camera);
       });
+      
       model.position.set(fi.position.x, 1.5, fi.position.y);
       model.rotation.y = -(fi.rotation * Math.PI) / 180;
       // Note: fi.scale is 2D editor scale — don't override 3D model scaling from scaleToFit
@@ -1399,6 +1446,8 @@
         model.scale.x *= fi.scale.x;
         model.scale.z *= fi.scale.y;
       }
+      
+      tagModel(model); // Tag procedural model initially
       wallGroup.add(model);
     }
 
@@ -1622,6 +1671,54 @@
     markSceneDirty();
   }
 
+  /**
+   * Highlights an object by ID with a specific color.
+   * Useful for visual feedback when selected from Kotlin or UI.
+   */
+  function highlightObject(id: string, colorHex: string = '#ff0000', durationMs: number = 0) {
+    const color = new THREE.Color(colorHex);
+    const affectedMeshes: { mesh: THREE.Mesh, originalEmissive: THREE.Color, originalIntensity: number }[] = [];
+
+    wallGroup.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && (obj.userData.furnitureId === id || obj.userData.wallId === id)) {
+        const mat = obj.material;
+        const materials = Array.isArray(mat) ? mat : [mat];
+        
+        materials.forEach(m => {
+          if (m instanceof THREE.MeshStandardMaterial) {
+            affectedMeshes.push({ 
+              mesh: obj, 
+              originalEmissive: m.emissive.clone(),
+              originalIntensity: m.emissiveIntensity
+            });
+            m.emissive.copy(color);
+            m.emissiveIntensity = 0.6;
+          }
+        });
+      }
+    });
+
+    if (affectedMeshes.length > 0) {
+      markSceneDirty();
+      
+      if (durationMs > 0) {
+        setTimeout(() => {
+          affectedMeshes.forEach(item => {
+            const mat = item.mesh.material;
+            const materials = Array.isArray(mat) ? mat : [mat];
+            materials.forEach(m => {
+              if (m instanceof THREE.MeshStandardMaterial) {
+                m.emissive.copy(item.originalEmissive);
+                m.emissiveIntensity = item.originalIntensity;
+              }
+            });
+          });
+          markSceneDirty();
+        }, durationMs);
+      }
+    }
+  }
+
   interface WallSegment {
     width: number;
     height: number;
@@ -1753,6 +1850,8 @@
 
     const resizeObs = new ResizeObserver(onResize);
     resizeObs.observe(container);
+
+    (window as any).highlightObject = highlightObject;
 
     const unsub = activeFloor.subscribe((f) => {
       currentFloor = f;
