@@ -1,4 +1,6 @@
 node_modules
+# Docs
+/docs/
 
 # Output
 .output
