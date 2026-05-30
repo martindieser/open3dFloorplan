@@ -17,6 +17,7 @@ interface BridgeConfig {
 export class KotlinBridgeService {
   private static instance: KotlinBridgeService;
   private isInitialized = false;
+  private editorLoaded = false;
 
   private constructor() {}
 
@@ -92,6 +93,10 @@ export class KotlinBridgeService {
       return "pong";
     };
 
+    (window as any).isEditorLoaded = () => {
+      return this.editorLoaded;
+    };
+
     // Notify Kotlin that the bridge is initialized and ready to receive data
     const android = (window as any).AndroidInterface;
     if (android && android.onEditorReady) {
@@ -119,6 +124,26 @@ export class KotlinBridgeService {
     });
 
     this.isInitialized = true;
+  }
+
+  /**
+   * Notifies Kotlin that the editor (the UI) has finished loading.
+   */
+  public notifyEditorLoaded() {
+    if (this.editorLoaded) return;
+    
+    this.editorLoaded = true;
+    const android = (window as any).AndroidInterface;
+    if (android && android.onEditorLoaded) {
+      console.log('[KotlinBridge] Notifying Kotlin that editor is loaded (first time)');
+      try {
+        android.onEditorLoaded();
+      } catch (e) {
+        console.error('[KotlinBridge] Failed to call AndroidInterface.onEditorLoaded', e);
+      }
+    } else {
+      console.log('[KotlinBridge] Editor loaded signal processed');
+    }
   }
 
   /**

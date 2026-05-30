@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { currentProject, viewMode, selectedElementId, selectedRoomId, createDefaultProject } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
+  import { kotlinBridge } from '$lib/services/kotlinBridge';
   import ResponsiveLayout from '$lib/components/layout/ResponsiveLayout.svelte';
   import FloorPlanCanvas from '$lib/components/editor/FloorPlanCanvas.svelte';
 

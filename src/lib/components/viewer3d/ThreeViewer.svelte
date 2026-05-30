@@ -1932,6 +1932,13 @@
       }
     });
 
+    // Notify Kotlin that the 3D viewer is fully loaded and painted
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        kotlinBridge.notifyEditorLoaded();
+      });
+    });
+
     return () => {
       resizeObs.disconnect();
       unsub();

@@ -14,6 +14,8 @@ The editor notifies Kotlin whenever the project state changes or when the bridge
   - **Behavior:** Triggered on every change to the `currentProject` store (autosave).
 - **Method:** `onEditorReady()`
   - **Behavior:** Triggered once when the Svelte editor and bridge functions are fully initialized. **This is the signal to call `loadFromKotlin` from the native side.**
+- **Method:** `onEditorLoaded()`
+  - **Behavior:** Triggered when the UI (the editor page) has finished loading its initial state and is ready for interaction.
 - **Method:** `onNextStep()`
   - **Behavior:** Triggered when the user clicks the "Siguiente" button. Use this to advance the application flow (e.g., closing the WebView).
 - **Method:** `onObjectSelected(jsonString: string)`
@@ -49,6 +51,9 @@ Kotlin calls global functions exposed by the editor.
   - `durationMs`: How long to keep the highlight before reverting. Set to `0` for permanent.
 
 - **Health Check:** `window.pingKotlinBridge()` -> `"pong"`
+
+- **Status Check:** `window.isEditorLoaded()` -> `boolean`
+  - Returns `true` if the editor UI has finished mounting.
 
 ---
 

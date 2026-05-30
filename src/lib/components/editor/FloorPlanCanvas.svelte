@@ -12,6 +12,7 @@
   import { roomPresets, placePreset } from '$lib/utils/roomPresets';
   import { roomTemplates, placeRoomTemplate } from '$lib/utils/roomTemplates';
   import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
+  import { kotlinBridge } from '$lib/services/kotlinBridge';
   import { projectSettings, formatLength, formatArea } from '$lib/stores/settings';
   import type { ProjectSettings } from '$lib/stores/settings';
   import type { CanvasState } from '$lib/utils/canvasInteraction';
@@ -1579,6 +1580,13 @@
     const resizeObs = new ResizeObserver(resize);
     resizeObs.observe(canvas.parentElement!);
     requestAnimationFrame(draw);
+
+    // Notify Kotlin that the editor is fully painted and ready
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        kotlinBridge.notifyEditorLoaded();
+      });
+    });
 
     let initialFitDone = false;
     const unsub1 = activeFloor.subscribe((f) => {
