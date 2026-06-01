@@ -63,6 +63,7 @@
           properties: { 
             thickness: wall.thickness, 
             height: wall.height, 
+            elevation: wall.elevation ?? 0,
             color: wall.color,
             length: wallLength(wall)
           } 
@@ -81,6 +82,7 @@
             width: furniture.width ?? cat?.width,
             depth: furniture.depth ?? cat?.depth,
             height: furniture.height ?? cat?.height,
+            elevation: furniture.elevation ?? 0,
             rotation: furniture.rotation,
             color: furniture.color || cat?.color,
             material: furniture.material
@@ -99,6 +101,7 @@
             type: door.type, 
             width: door.width, 
             height: door.height,
+            elevation: door.elevation ?? 0,
             swingDirection: door.swingDirection,
             flipSide: door.flipSide,
             position: door.position
@@ -117,6 +120,7 @@
             width: win.width, 
             height: win.height, 
             sillHeight: win.sillHeight,
+            elevation: win.elevation ?? 0,
             position: win.position
           } 
         };
@@ -132,6 +136,8 @@
             stairType: stair.stairType, 
             width: stair.width, 
             depth: stair.depth, 
+            height: stair.height ?? 260,
+            elevation: stair.elevation ?? 0,
             riserCount: stair.riserCount, 
             direction: stair.direction,
             rotation: stair.rotation
@@ -149,6 +155,7 @@
             shape: col.shape, 
             diameter: col.diameter, 
             height: col.height, 
+            elevation: col.elevation ?? 0,
             color: col.color,
             rotation: col.rotation
           } 

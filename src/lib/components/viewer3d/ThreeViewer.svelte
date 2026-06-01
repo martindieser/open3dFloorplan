@@ -696,9 +696,21 @@
             const floor = get(activeFloor);
             const furniture = floor?.furniture.find(f => f.id === hitFurnitureId);
             if (furniture) {
+              const cat = getCatalogItem(furniture.catalogId);
               furnitureData = {
-                ...furniture,
-                catalogItem: getCatalogItem(furniture.catalogId)
+                id: furniture.id,
+                type: 'furniture',
+                properties: {
+                  name: cat?.name || 'Furniture',
+                  width: furniture.width ?? cat?.width,
+                  depth: furniture.depth ?? cat?.depth,
+                  height: furniture.height ?? cat?.height,
+                  elevation: furniture.elevation ?? 0,
+                  rotation: furniture.rotation,
+                  color: furniture.color || cat?.color,
+                  material: furniture.material
+                },
+                metadata: { catalogId: furniture.catalogId }
               };
             }
             break;
@@ -935,8 +947,9 @@
   function buildStairs(floor: Floor) {
     if (!floor.stairs) return;
     for (const stair of floor.stairs) {
-      const totalHeight = 260; // standard floor height
+      const totalHeight = stair.height ?? 260; // use property or default
       const riserHeight = totalHeight / stair.riserCount;
+      const elevation = stair.elevation ?? 0;
       const mat = new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.7 });
       const sideMat = new THREE.MeshStandardMaterial({ color: 0xb8956a, roughness: 0.8 });
       const type = stair.stairType || 'straight';
@@ -1026,7 +1039,7 @@
         }
       }
       
-      stairGroup.position.set(stair.position.x, 0, stair.position.y);
+      stairGroup.position.set(stair.position.x, elevation, stair.position.y);
       stairGroup.rotation.y = -(stair.rotation * Math.PI) / 180;
       if (stair.direction === 'down') {
         stairGroup.rotation.y += Math.PI;
@@ -1040,6 +1053,7 @@
     for (const col of floor.columns) {
       const h = col.height || 280;
       const d = col.diameter || 30;
+      const elevation = col.elevation ?? 0;
       let geo: THREE.BufferGeometry;
       if (col.shape === 'square') {
         geo = new THREE.BoxGeometry(d, h, d);
@@ -1048,7 +1062,7 @@
       }
       const mat = new THREE.MeshStandardMaterial({ color: col.color || '#cccccc', roughness: 0.7 });
       const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(col.position.x, h / 2, col.position.y);
+      mesh.position.set(col.position.x, h / 2 + elevation, col.position.y);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       wallGroup.add(mesh);
@@ -1160,11 +1174,12 @@
           const segAngle = Math.atan2(p1y - p0y, p1x - p0x);
           const segCx = (p0x + p1x) / 2;
           const segCy = (p0y + p1y) / 2;
+          const elevation = wall.elevation ?? 0;
           const geo = new THREE.BoxGeometry(segLen, h, t);
           const mesh = new THREE.Mesh(geo, materials);
           mesh.castShadow = true;
           mesh.receiveShadow = true;
-          mesh.position.set(segCx, h / 2, segCy);
+          mesh.position.set(segCx, h / 2 + elevation, segCy);
           mesh.rotation.y = -segAngle;
           mesh.userData.wallId = wall.id;
           wallMeshMap.set(mesh, wall.id);
@@ -1181,9 +1196,10 @@
           const segLen = Math.hypot(p1x - p0x, p1y - p0y);
           if (segLen < 0.5) continue;
           const segAngle = Math.atan2(p1y - p0y, p1x - p0x);
+          const elevation = wall.elevation ?? 0;
           const bbGeo = new THREE.BoxGeometry(segLen, BASEBOARD_HEIGHT, t + 2);
           const bbMesh = new THREE.Mesh(bbGeo, baseboardMat);
-          bbMesh.position.set((p0x + p1x) / 2, BASEBOARD_HEIGHT / 2, (p0y + p1y) / 2);
+          bbMesh.position.set((p0x + p1x) / 2, BASEBOARD_HEIGHT / 2 + elevation, (p0y + p1y) / 2);
           bbMesh.rotation.y = -segAngle;
           bbMesh.castShadow = true;
           wallGroup.add(bbMesh);
@@ -1201,6 +1217,7 @@
       const angle = Math.atan2(dy, dx);
       const cx = (wall.start.x + wall.end.x) / 2;
       const cy = (wall.start.y + wall.end.y) / 2;
+      const elevation = wall.elevation ?? 0;
 
       const doorOpenings = floor.doors.filter((d) => d.wallId === wall.id);
       const winOpenings = floor.windows.filter((w) => w.wallId === wall.id);
@@ -1222,7 +1239,7 @@
         const localX = seg.offsetX - len / 2;
         mesh.position.set(
           cx + localX * Math.cos(angle),
-          seg.height / 2 + seg.offsetY,
+          seg.height / 2 + seg.offsetY + elevation,
           cy + localX * Math.sin(angle)
         );
         mesh.rotation.y = -angle;
@@ -1236,7 +1253,7 @@
       if (doorOpeningsForBB.length === 0) {
         const bbGeo = new THREE.BoxGeometry(len, BASEBOARD_HEIGHT, t + 2);
         const bbMesh = new THREE.Mesh(bbGeo, baseboardMat);
-        bbMesh.position.set(cx, BASEBOARD_HEIGHT / 2, cy);
+        bbMesh.position.set(cx, BASEBOARD_HEIGHT / 2 + elevation, cy);
         bbMesh.rotation.y = -angle;
         bbMesh.castShadow = true;
         wallGroup.add(bbMesh);
@@ -1254,7 +1271,7 @@
             const bbMesh = new THREE.Mesh(bbGeo, baseboardMat);
             bbMesh.position.set(
               cx + segCenter * Math.cos(angle),
-              BASEBOARD_HEIGHT / 2,
+              BASEBOARD_HEIGHT / 2 + elevation,
               cy + segCenter * Math.sin(angle)
             );
             bbMesh.rotation.y = -angle;
@@ -1289,9 +1306,11 @@
       const py = wall.start.y + (wall.end.y - wall.start.y) * t;
       const angle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
       const wt = Math.max(wall.thickness, WALL_THICKNESS);
+      const wallElevation = wall.elevation ?? 0;
+      const doorElevation = wallElevation + (door.elevation ?? 0);
 
       const frameMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.6 });
-      const doorHeight = 210;
+      const doorHeight = door.height ?? 210;
       const jamb = 5; // jamb thickness
 
       // Left jamb
@@ -1300,7 +1319,7 @@
       const ljOffset = -door.width / 2 - jamb / 2;
       ljMesh.position.set(
         px + ljOffset * Math.cos(angle),
-        doorHeight / 2,
+        doorHeight / 2 + doorElevation,
         py + ljOffset * Math.sin(angle)
       );
       ljMesh.rotation.y = -angle;
@@ -1312,7 +1331,7 @@
       const rjOffset = door.width / 2 + jamb / 2;
       rjMesh.position.set(
         px + rjOffset * Math.cos(angle),
-        doorHeight / 2,
+        doorHeight / 2 + doorElevation,
         py + rjOffset * Math.sin(angle)
       );
       rjMesh.rotation.y = -angle;
@@ -1322,7 +1341,7 @@
       // Header
       const hGeo = new THREE.BoxGeometry(door.width + jamb * 2, jamb, wt + 2);
       const hMesh = new THREE.Mesh(hGeo, frameMat);
-      hMesh.position.set(px, doorHeight + jamb / 2, py);
+      hMesh.position.set(px, doorHeight + jamb / 2 + doorElevation, py);
       hMesh.rotation.y = -angle;
       hMesh.castShadow = true;
       wallGroup.add(hMesh);
@@ -1340,7 +1359,7 @@
       const normalZ = Math.cos(angle);
       panelMesh.position.set(
         px + hingeOffset * Math.cos(angle) + normalX * 2,
-        doorHeight / 2 - 2,
+        doorHeight / 2 - 2 + doorElevation,
         py + hingeOffset * Math.sin(angle) + normalZ * 2
       );
       panelMesh.rotation.y = -angle + swingAngle;
@@ -1357,7 +1376,7 @@
       const handleSin = Math.sin(-angle + swingAngle);
       handleMesh.position.set(
         panelMesh.position.x + handleLocalX * handleCos,
-        100,
+        100 + doorElevation,
         panelMesh.position.z - handleLocalX * handleSin
       );
       wallGroup.add(handleMesh);
@@ -1372,7 +1391,9 @@
       const py = wall.start.y + (wall.end.y - wall.start.y) * t;
       const angle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
       const wt = Math.max(wall.thickness, WALL_THICKNESS);
-      const winCY = win.sillHeight + win.height / 2;
+      const wallElevation = wall.elevation ?? 0;
+      const winElevation = wallElevation + (win.elevation ?? 0);
+      const winCY = win.sillHeight + win.height / 2 + winElevation;
 
       const frameMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.4, metalness: 0.1 });
       const mullionW = 4; // mullion bar width
@@ -1425,7 +1446,7 @@
       // Sill — protruding ledge
       const sillGeo = new THREE.BoxGeometry(win.width + 16, 4, wt + 10);
       const sillMesh = new THREE.Mesh(sillGeo, frameMat);
-      sillMesh.position.set(px, win.sillHeight - 2, py);
+      sillMesh.position.set(px, win.sillHeight - 2 + winElevation, py);
       sillMesh.rotation.y = -angle;
       sillMesh.castShadow = true;
       wallGroup.add(sillMesh);
@@ -1461,7 +1482,8 @@
         if (renderer && scene && camera) renderer.render(scene, camera);
       });
       
-      model.position.set(fi.position.x, 1.5, fi.position.y);
+      const elevation = fi.elevation ?? 0;
+      model.position.set(fi.position.x, 1.5 + elevation, fi.position.y);
       model.rotation.y = -(fi.rotation * Math.PI) / 180;
       // Note: fi.scale is 2D editor scale — don't override 3D model scaling from scaleToFit
       if (fi.scale && (fi.scale.x !== 1 || fi.scale.y !== 1)) {

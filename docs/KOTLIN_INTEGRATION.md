@@ -94,12 +94,12 @@ When an object is selected, the editor sends its current state to Kotlin via `on
 
 | Element `type` | Available `properties` |
 | :--- | :--- |
-| `furniture` | `name` (string), `width` (number), `depth` (number), `height` (number), `rotation` (number), `color` (hex), `material` (string) |
-| `wall` | `thickness` (number), `height` (number), `color` (hex), `length` (number - readonly) |
-| `door` | `type` (string), `width` (number), `height` (number), `swingDirection` ('left'\|'right'), `flipSide` (boolean), `position` (0.0-1.0) |
-| `window` | `type` (string), `width` (number), `height` (number), `sillHeight` (number), `position` (0.0-1.0) |
-| `stair` | `stairType` (string), `width` (number), `depth` (number), `riserCount` (number), `direction` ('up'\|'down'), `rotation` (number) |
-| `column` | `shape` ('round'\|'square'), `diameter` (number), `height` (number), `color` (hex), `rotation` (number) |
+| `furniture` | `name` (string), `width` (number), `depth` (number), `height` (number), `elevation` (number), `rotation` (number), `color` (hex), `material` (string) |
+| `wall` | `thickness` (number), `height` (number), `elevation` (number), `color` (hex), `length` (number - readonly) |
+| `door` | `type` (string), `width` (number), `height` (number), `elevation` (number), `swingDirection` ('left'\|'right'), `flipSide` (boolean), `position` (0.0-1.0) |
+| `window` | `type` (string), `width` (number), `height` (number), `sillHeight` (number), `elevation` (number), `position` (0.0-1.0) |
+| `stair` | `stairType` (string), `width` (number), `depth` (number), `height` (number), `elevation` (number), `riserCount` (number), `direction` ('up'\|'down'), `rotation` (number) |
+| `column` | `shape` ('round'\|'square'), `diameter` (number), `height` (number), `elevation` (number), `color` (hex), `rotation` (number) |
 | `room` | `name` (string), `area` (number - readonly), `roomType` ('indoor'\|'outdoor'\|'garage'\|'utility'), `color` (hex) |
 | `textAnnotation` | `text` (string), `fontSize` (number), `color` (hex), `rotation` (number) |
 

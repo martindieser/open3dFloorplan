@@ -38,6 +38,7 @@ export interface Door {
   position: number; // 0-1 along wall
   width: number;
   height: number;
+  elevation?: number;
   type: 'single' | 'double' | 'sliding' | 'french' | 'pocket' | 'bifold';
   swingDirection: 'left' | 'right';
   flipSide: boolean; // flip which side of wall the door opens to (vertical flip)

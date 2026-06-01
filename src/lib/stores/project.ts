@@ -277,7 +277,7 @@ export function addStair(position: Point): string {
   const id = uid();
   mutate((f) => {
     if (!f.stairs) f.stairs = [];
-    f.stairs.push({ id, position, rotation: 0, width: 100, depth: 300, riserCount: 14, direction: 'up', stairType: 'straight' });
+    f.stairs.push({ id, position, rotation: 0, width: 100, depth: 300, height: 260, riserCount: 14, direction: 'up', stairType: 'straight' });
   }, 'Added stair');
   return id;
 }

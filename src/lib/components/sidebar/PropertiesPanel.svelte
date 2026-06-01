@@ -102,6 +102,10 @@
     if (!selectedWall) return;
     updateWall(selectedWall.id, { height: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
+  function onWallElevation(e: Event) {
+    if (!selectedWall) return;
+    updateWall(selectedWall.id, { elevation: inputToCm(Number((e.target as HTMLInputElement).value)) });
+  }
   function onWallColor(e: Event) {
     if (!selectedWall) return;
     updateWall(selectedWall.id, { color: (e.target as HTMLInputElement).value });
