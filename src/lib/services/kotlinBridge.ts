@@ -2,6 +2,7 @@ import { currentProject, loadProject, isReadOnly, viewMode, createDefaultProject
 import { draggingFromLibrary } from '$lib/stores/ui';
 import { get } from 'svelte/store';
 import { activeCatalog, getCatalogItem } from '$lib/utils/furnitureCatalog';
+import { roomTemplates } from '$lib/utils/roomTemplates';
 import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
 
 interface BridgeConfig {
@@ -164,6 +165,19 @@ export class KotlinBridgeService {
 
         placingFurnitureId.set(null);
         placingStair.set(false);
+        panMode.set(false);
+        return { success: true };
+      },
+      addRoomTemplate: (templateId: string) => {
+        const template = roomTemplates.find(t => t.name === templateId);
+        if (!template) return { success: false, error: "Template not found" };
+
+        selectedTool.set('select');
+        draggingFromLibrary.set({ type: 'room-template', id: templateId });
+
+        placingFurnitureId.set(null);
+        placingStair.set(false);
+        placingColumn.set(false);
         panMode.set(false);
         return { success: true };
       },

@@ -69,6 +69,7 @@ To achieve visual consistency with the native Android application, you can contr
 | `addFurniture(id)`| Starts placing a furniture item. | `editorActions.addFurniture('chair_01')` |
 | `addStair()` | Starts placing a staircase. | `editorActions.addStair()` |     
 | `addColumn(shape)` | Starts placing a column. | `editorActions.addColumn('round')` |
+| `addRoomTemplate(id)` | Starts placing a predefined room layout. | `editorActions.addRoomTemplate('Studio Apartment')` |
 | `updateElement(id, props)` | Updates properties of an element. | `editorActions.updateElement('id123', { width: 100 })` |
 | `cancelAction()` | Cancels current tool and resets state. | `editorActions.cancelAction()` |
 | `setMode(mode)` | Toggles between `'2d'` and `'3d'`. | `editorActions.setMode('3d')` |
@@ -81,6 +82,7 @@ To achieve visual consistency with the native Android application, you can contr
 **Door Types:** `'single'`, `'double'`, `'sliding'`, `'french'`, `'pocket'`, `'bifold'`.
 **Window Types:** `'standard'`, `'fixed'`, `'casement'`, `'sliding'`, `'bay'`.  
 **Column Shapes:** `'round'`, `'square'`.
+**Room Template IDs:** `'Living Room'`, `'Bedroom'`, `'Kitchen'`, `'Bathroom'`, `'Office'`, `'Dining Room'`.
 
 ---
 
