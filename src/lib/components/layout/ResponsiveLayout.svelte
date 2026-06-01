@@ -13,9 +13,7 @@
 </script>
 
 <div class="h-screen flex flex-col overflow-hidden bg-slate-50">
-  {#if $isMobile}
-    <MobileToolbar />
-  {:else}
+  {#if !$isMobile}
     <TopBar />
   {/if}
 
@@ -32,10 +30,6 @@
 
     {#if !$isMobile && !$isReadOnly}
       <PropertiesPanel is3D={$viewMode === '3d'} />
-    {/if}
-
-    {#if $isMobile && !$isReadOnly}
-      <BottomPanel />
     {/if}
   </div>
 </div>

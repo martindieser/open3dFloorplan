@@ -1,7 +1,7 @@
-import { currentProject, loadProject, isReadOnly, viewMode, createDefaultProject } from '$lib/stores/project';
+import { currentProject, loadProject, isReadOnly, viewMode, createDefaultProject, selectedTool, undo, redo, triggerZoomToFit, selectedElementId, removeElement, placingFurnitureId, placingStair, placingColumn, panMode, placingDoorType, placingWindowType, placingColumnShape, activeFloor, updateWall, updateDoor, updateWindow, updateFurniture, updateRoom, updateStair, updateColumn, updateTextAnnotation } from '$lib/stores/project';
+import { draggingFromLibrary } from '$lib/stores/ui';
 import { get } from 'svelte/store';
-import { goto } from '$app/navigation';
-import { activeCatalog } from '$lib/utils/furnitureCatalog';
+import { activeCatalog, getCatalogItem } from '$lib/utils/furnitureCatalog';
 import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
 
 interface BridgeConfig {
@@ -95,6 +95,141 @@ export class KotlinBridgeService {
 
     (window as any).isEditorLoaded = () => {
       return this.editorLoaded;
+    };
+
+    // 2. Expose Editor Actions to Kotlin
+    (window as any).editorActions = {
+      addWall: () => {
+        selectedTool.set('wall');
+        placingFurnitureId.set(null);
+        placingStair.set(false);
+        placingColumn.set(false);
+        draggingFromLibrary.set(null);
+        panMode.set(false);
+        return { success: true };
+      },
+      addDoor: (type: 'single' | 'double' | 'sliding' | 'french' | 'pocket' | 'bifold') => {
+        selectedTool.set('door');
+        placingDoorType.set(type);
+        placingFurnitureId.set(null);
+        placingStair.set(false);
+        placingColumn.set(false);
+        draggingFromLibrary.set(null);
+        panMode.set(false);
+        return { success: true };
+      },
+      addWindow: (type: 'standard' | 'fixed' | 'casement' | 'sliding' | 'bay') => {
+        selectedTool.set('window');
+        placingWindowType.set(type);
+        placingFurnitureId.set(null);
+        placingStair.set(false);
+        placingColumn.set(false);
+        draggingFromLibrary.set(null);
+        panMode.set(false);
+        return { success: true };
+      },
+      addFurniture: (catalogId: string) => {
+        const catalog = get(activeCatalog);
+        if (!catalog.some(f => f.id === catalogId)) {
+          return { success: false, error: `ID "${catalogId}" not found in catalog.` };
+        }
+
+        // Use 'select' tool to avoid onMouseDown placement during drag
+        selectedTool.set('select');
+        draggingFromLibrary.set({ type: 'furniture', id: catalogId });
+        placingFurnitureId.set(catalogId);
+
+        placingStair.set(false);
+        placingColumn.set(false);
+        panMode.set(false);
+        return { success: true };
+      },
+      addStair: () => {
+        // Use 'select' tool and disable immediate placement flag
+        selectedTool.set('select');
+        draggingFromLibrary.set({ type: 'stair', id: 'stair' });
+        placingStair.set(false);
+
+        placingFurnitureId.set(null);
+        placingColumn.set(false);
+        panMode.set(false);
+        return { success: true };
+      },
+      addColumn: (shape: 'round' | 'square') => {
+        // Use 'select' tool and disable immediate placement flag
+        selectedTool.set('select');
+        draggingFromLibrary.set({ type: 'column', id: shape });
+        placingColumn.set(false);
+        placingColumnShape.set(shape);
+
+        placingFurnitureId.set(null);
+        placingStair.set(false);
+        panMode.set(false);
+        return { success: true };
+      },
+
+      cancelAction: () => {
+        placingFurnitureId.set(null);
+        placingStair.set(false);
+        placingColumn.set(false);
+        draggingFromLibrary.set(null);
+        selectedTool.set('select');
+        panMode.set(true);
+        selectedElementId.set(null);
+        return { success: true };
+      },
+      setMode: (mode: '2d' | '3d') => {
+        viewMode.set(mode);
+        return { success: true };
+      },
+      undo: () => {
+        undo();
+        return { success: true };
+      },
+      redo: () => {
+        redo();
+        return { success: true };
+      },
+      zoomToFit: () => {
+        triggerZoomToFit.update(n => n + 1);
+        return { success: true };
+      },
+      deleteSelected: () => {
+        const id = get(selectedElementId);
+        if (id) {
+          removeElement(id);
+          selectedElementId.set(null);
+          return { success: true };
+        }
+        return { success: false, error: "No element selected" };
+      },
+      updateElement: (id: string, props: any) => {
+        const floor = get(activeFloor);
+        if (!floor) return { success: false, error: "No active floor" };
+
+        if (floor.furniture.some(f => f.id === id)) {
+          updateFurniture(id, props);
+        } else if (floor.walls.some(w => w.id === id)) {
+          updateWall(id, props);
+        } else if (floor.doors.some(d => d.id === id)) {
+          updateDoor(id, props);
+        } else if (floor.windows.some(w => w.id === id)) {
+          updateWindow(id, props);
+        } else if (floor.stairs?.some(s => s.id === id)) {
+          updateStair(id, props);
+        } else if (floor.columns?.some(c => c.id === id)) {
+          updateColumn(id, props);
+        } else if (floor.textAnnotations?.some(t => t.id === id)) {
+          updateTextAnnotation(id, props);
+        } else {
+          return { success: false, error: "Element not found" };
+        }
+        return { success: true };
+      },
+      clearProject: () => {
+        loadProject(createDefaultProject());
+        return { success: true };
+      }
     };
 
     // Notify Kotlin that the bridge is initialized and ready to receive data

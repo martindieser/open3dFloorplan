@@ -40,6 +40,156 @@
   $effect(() => { canvasCamY.set(camY); });
   triggerZoomToFit.subscribe(v => { if (v > 0) zoomToFit(); });
 
+  // Notify Kotlin of selection changes
+  $effect(() => {
+    const id = currentSelectedId;
+    const roomId = currentSelectedRoomId;
+    
+    if (!id && !roomId) {
+      kotlinBridge.notifyObjectSelected('', null);
+      return;
+    }
+
+    if (id && currentFloor) {
+      let data: any = null;
+      let type: string = '';
+
+      const wall = currentFloor.walls.find(w => w.id === id);
+      if (wall) {
+        type = 'wall';
+        data = { 
+          id: wall.id, 
+          type, 
+          properties: { 
+            thickness: wall.thickness, 
+            height: wall.height, 
+            color: wall.color,
+            length: wallLength(wall)
+          } 
+        };
+      }
+
+      const furniture = currentFloor.furniture.find(f => f.id === id);
+      if (furniture) {
+        type = 'furniture';
+        const cat = getCatalogItem(furniture.catalogId);
+        data = { 
+          id: furniture.id, 
+          type, 
+          properties: { 
+            name: cat?.name || 'Furniture',
+            width: furniture.width ?? cat?.width,
+            depth: furniture.depth ?? cat?.depth,
+            height: furniture.height ?? cat?.height,
+            rotation: furniture.rotation,
+            color: furniture.color || cat?.color,
+            material: furniture.material
+          },
+          metadata: { catalogId: furniture.catalogId }
+        };
+      }
+
+      const door = currentFloor.doors.find(d => d.id === id);
+      if (door) {
+        type = 'door';
+        data = { 
+          id: door.id, 
+          type, 
+          properties: { 
+            type: door.type, 
+            width: door.width, 
+            height: door.height,
+            swingDirection: door.swingDirection,
+            flipSide: door.flipSide,
+            position: door.position
+          } 
+        };
+      }
+
+      const win = currentFloor.windows.find(w => w.id === id);
+      if (win) {
+        type = 'window';
+        data = { 
+          id: win.id, 
+          type, 
+          properties: { 
+            type: win.type, 
+            width: win.width, 
+            height: win.height, 
+            sillHeight: win.sillHeight,
+            position: win.position
+          } 
+        };
+      }
+
+      const stair = currentFloor.stairs?.find(s => s.id === id);
+      if (stair) {
+        type = 'stair';
+        data = { 
+          id: stair.id, 
+          type, 
+          properties: { 
+            stairType: stair.stairType, 
+            width: stair.width, 
+            depth: stair.depth, 
+            riserCount: stair.riserCount, 
+            direction: stair.direction,
+            rotation: stair.rotation
+          } 
+        };
+      }
+
+      const col = currentFloor.columns?.find(c => c.id === id);
+      if (col) {
+        type = 'column';
+        data = { 
+          id: col.id, 
+          type, 
+          properties: { 
+            shape: col.shape, 
+            diameter: col.diameter, 
+            height: col.height, 
+            color: col.color,
+            rotation: col.rotation
+          } 
+        };
+      }
+
+      const text = currentFloor.textAnnotations?.find(t => t.id === id);
+      if (text) {
+        type = 'textAnnotation';
+        data = { 
+          id: text.id, 
+          type, 
+          properties: { 
+            text: text.text, 
+            fontSize: text.fontSize, 
+            color: text.color, 
+            rotation: text.rotation 
+          } 
+        };
+      }
+
+      if (data) {
+        kotlinBridge.notifyObjectSelected(id, data);
+      }
+    } else if (roomId) {
+      const room = currentFloor?.rooms.find(r => r.id === roomId) || detectedRooms.find(r => r.id === roomId);
+      if (room) {
+        kotlinBridge.notifyObjectSelected(roomId, {
+          id: roomId,
+          type: 'room',
+          properties: {
+            name: room.name,
+            area: room.area,
+            roomType: room.roomType,
+            color: room.color
+          }
+        });
+      }
+    }
+  });
+
   // Wall drawing state
   let wallStart: Point | null = $state(null);
   let wallSequenceFirst: Point | null = $state(null);
@@ -165,7 +315,7 @@
   // Wall endpoint drag state (includes all connected walls at the corner)
   let draggingWallEndpoint: { wallId: string; endpoint: 'start' | 'end' } | null = $state(null);
   let draggingConnectedEndpoints: { wallId: string; endpoint: 'start' | 'end' }[] = $state([]);
-  let dragPreview: { x: number; y: number; type: string; width: number; depth: number } | null = $state(null);
+  let dragPreview: { x: number; y: number; type: string; width: number; depth: number; rotation?: number } | null = $state(null);
 
   // Resize/rotate handle drag state
   type HandleType = 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br' | 'resize-t' | 'resize-b' | 'resize-l' | 'resize-r' | 'rotate';
@@ -1392,7 +1542,7 @@
     }
 
     // Furniture placement preview
-    if (currentPlacingId && currentTool === 'furniture') drawFurniturePreview();
+    if (currentPlacingId && currentTool === 'furniture' && !$draggingFromLibrary) drawFurniturePreview();
 
     // Door/window placement preview
     if (placementPreview) drawPlacementPreview();
@@ -1549,16 +1699,23 @@
     // Drag preview ghost
     if (dragPreview) {
       const dp = dragPreview;
-      const s = worldToScreen(dp.x - dp.width / 2, dp.y - dp.depth / 2);
-      const e2 = worldToScreen(dp.x + dp.width / 2, dp.y + dp.depth / 2);
+      const s = worldToScreen(dp.x, dp.y);
+      const w = dp.width * zoom;
+      const d = dp.depth * zoom;
+      
       ctx.save();
+      ctx.translate(s.x, s.y);
+      if (dp.rotation) {
+        ctx.rotate((dp.rotation * Math.PI) / 180);
+      }
+      
       ctx.globalAlpha = 0.3;
       ctx.fillStyle = '#3b82f6';
-      ctx.fillRect(s.x, s.y, e2.x - s.x, e2.y - s.y);
+      ctx.fillRect(-w / 2, -d / 2, w, d);
       ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
-      ctx.strokeRect(s.x, s.y, e2.x - s.x, e2.y - s.y);
+      ctx.strokeRect(-w / 2, -d / 2, w, d);
       ctx.setLineDash([]);
       ctx.restore();
     }
@@ -1861,6 +2018,7 @@
   }
 
   function onMouseDown(e: MouseEvent) {
+    if ($draggingFromLibrary) return;
     markDirty();
     // Pan if: middle mouse OR (left mouse AND (space down OR shift-drag in select))
     // $panMode is handled as a fallback if nothing else is hit
@@ -2343,9 +2501,19 @@
     if ($draggingFromLibrary) {
       const { type, id } = $draggingFromLibrary;
       let w = 60, d = 60;
+      let pos = { x: snap(mousePos.x), y: snap(mousePos.y) };
+      let rot = 0;
+
       if (type === 'furniture') {
         const cat = getCatalogItem(id);
-        if (cat) { w = cat.width; d = cat.depth; }
+        if (cat) { 
+          w = cat.width; d = cat.depth; 
+          const wallSnap = snapFurnitureToWall(mousePos, id, 0);
+          if (wallSnap) {
+            pos = wallSnap.position;
+            rot = wallSnap.rotation;
+          }
+        }
       } else if (type === 'room' || type === 'room-template') {
         w = 400; d = 300;
       } else if (type === 'stair') {
@@ -2356,8 +2524,9 @@
       
       // Use snapped coordinates for the ghost so it matches the drop position
       dragPreview = { 
-        x: snap(mousePos.x), 
-        y: snap(mousePos.y), 
+        x: pos.x, 
+        y: pos.y, 
+        rotation: rot,
         type: (type === 'furniture' || type === 'stair' || type === 'column') ? 'item' : 'room', 
         width: w, 
         depth: d 
@@ -2633,12 +2802,19 @@
     if ($draggingFromLibrary) {
       const { type, id } = $draggingFromLibrary;
       
-      const rect = canvas.getBoundingClientRect();
-      const wp = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-      const pos = { x: snap(wp.x), y: snap(wp.y) };
+      // Use mousePos (last world position from move) instead of recalculating from event
+      // This is much more reliable on mobile/bridge environments
+      let pos = { x: snap(mousePos.x), y: snap(mousePos.y) };
+      let rot = 0;
 
       if (type === 'furniture') {
+        const wallSnap = snapFurnitureToWall(mousePos, id, 0);
+        if (wallSnap) {
+          pos = wallSnap.position;
+          rot = wallSnap.rotation;
+        }
         const newId = addFurniture(id, pos);
+        if (rot !== 0) setFurnitureRotation(newId, rot);
         selectedElementId.set(newId);
         selectedTool.set('select');
         placingFurnitureId.set(null);
@@ -3063,15 +3239,44 @@
   }
 
   function onDragOver(e: DragEvent) {
-    if (e.dataTransfer?.types.includes('application/o3d-type')) {
+    const hasO3DType = e.dataTransfer?.types.includes('application/o3d-type');
+    
+    if (hasO3DType || $draggingFromLibrary) {
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      
       const rect = canvas.getBoundingClientRect();
       const wp = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-      const itemType = e.dataTransfer?.types.includes('application/o3d-type') ? 'item' : '';
-      // Default preview size (furniture ~60x60cm, room ~400x300cm)
-      const isRoom = e.dataTransfer?.types.includes('application/o3d-type');
-      dragPreview = { x: wp.x, y: wp.y, type: itemType, width: 60, depth: 60 };
+      
+      // Use types from dataTransfer or fallback to draggingFromLibrary
+      const type = hasO3DType 
+        ? (e.dataTransfer?.getData('application/o3d-type') || $draggingFromLibrary?.type)
+        : $draggingFromLibrary?.type;
+      const id = hasO3DType 
+        ? (e.dataTransfer?.getData('application/o3d-id') || $draggingFromLibrary?.id)
+        : $draggingFromLibrary?.id;
+
+      if (type && id) {
+        let w = 60, d = 60;
+        if (type === 'furniture') {
+          const cat = getCatalogItem(id);
+          if (cat) { w = cat.width; d = cat.depth; }
+        } else if (type === 'room' || type === 'room-template') {
+          w = 400; d = 300;
+        } else if (type === 'stair') {
+          w = 100; d = 300;
+        } else if (type === 'column') {
+          w = 30; d = 30;
+        }
+
+        dragPreview = { 
+          x: snap(wp.x), 
+          y: snap(wp.y), 
+          type: (type === 'furniture' || type === 'stair' || type === 'column') ? 'item' : 'room', 
+          width: w, 
+          depth: d 
+        };
+      }
     }
   }
 
@@ -3082,8 +3287,16 @@
   function onDrop(e: DragEvent) {
     e.preventDefault();
     dragPreview = null;
-    const itemType = e.dataTransfer?.getData('application/o3d-type');
-    const itemId = e.dataTransfer?.getData('application/o3d-id');
+    
+    let itemType = e.dataTransfer?.getData('application/o3d-type');
+    let itemId = e.dataTransfer?.getData('application/o3d-id');
+
+    // Fallback to draggingFromLibrary if dataTransfer is empty (common in some bridge/native drag scenarios)
+    if ((!itemType || !itemId) && $draggingFromLibrary) {
+      itemType = $draggingFromLibrary.type;
+      itemId = $draggingFromLibrary.id;
+    }
+
     if (!itemType || !itemId) return;
 
     const rect = canvas.getBoundingClientRect();
