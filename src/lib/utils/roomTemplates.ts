@@ -2,6 +2,7 @@ import type { Point } from '$lib/models/types';
 import type { RoomPreset } from './roomPresets';
 import { placePreset } from './roomPresets';
 import { addFurniture, beginUndoGroup, endUndoGroup } from '$lib/stores/project';
+import { getCatalogItem, type FurnitureDef } from './furnitureCatalog';
 
 export interface FurniturePlacement {
   catalogId: string;
@@ -86,6 +87,21 @@ export const roomTemplates: RoomTemplate[] = [
 ];
 
 /**
+ * Filter room templates to only include furniture that exists in the current catalog.
+ * If a template has no furniture items found in the catalog, it is omitted.
+ */
+export function getFilteredRoomTemplates(catalog: FurnitureDef[]): RoomTemplate[] {
+  if (!catalog || catalog.length === 0) return [];
+
+  return roomTemplates
+    .map((tmpl) => ({
+      ...tmpl,
+      furniture: tmpl.furniture.filter((f) => catalog.some((c) => c.id === f.catalogId)),
+    }))
+    .filter((tmpl) => tmpl.furniture.length > 0);
+}
+
+/**
  * Place a room preset with optional furniture template.
  * Furniture positions are offset from the given origin (room center).
  */
@@ -103,11 +119,15 @@ export function placeRoomTemplate(
 
   if (template) {
     for (const item of template.furniture) {
-      addFurniture(item.catalogId, {
-        x: origin.x + item.x,
-        y: origin.y + item.y,
-      });
+      // Only add furniture if it exists in the catalog
+      if (getCatalogItem(item.catalogId)) {
+        addFurniture(item.catalogId, {
+          x: origin.x + item.x,
+          y: origin.y + item.y,
+        });
+      }
     }
   }
   endUndoGroup();
 }
+

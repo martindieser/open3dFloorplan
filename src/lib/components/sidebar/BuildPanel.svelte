@@ -3,7 +3,7 @@
   import type { Tool } from '$lib/stores/project';
   import type { Door, Window as Win } from '$lib/models/types';
   import { roomPresets, placePreset } from '$lib/utils/roomPresets';
-  import { roomTemplates, placeRoomTemplate } from '$lib/utils/roomTemplates';
+  import { roomTemplates, placeRoomTemplate, getFilteredRoomTemplates } from '$lib/utils/roomTemplates';
   import { activeCatalog, activeFurnitureCategories } from '$lib/utils/furnitureCatalog';
   import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
   import { getModelFile, generateThumbnail, getThumbnail, preloadThumbnails } from '$lib/utils/furnitureThumbnails';
@@ -488,7 +488,7 @@
         <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Room Templates</h3>
         <p class="text-xs text-gray-400 mb-3">Pre-furnished rooms — walls + furniture in one click</p>
         <div class="grid grid-cols-2 gap-2">
-          {#each roomTemplates as tmpl}
+          {#each getFilteredRoomTemplates($activeCatalog) as tmpl}
             <button
               class="flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 border-gray-100 hover:border-green-300 hover:bg-green-50 transition-colors cursor-grab active:cursor-grabbing"
               onclick={() => onPresetClick(tmpl.presetId, tmpl.name)}
