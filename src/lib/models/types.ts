@@ -60,6 +60,7 @@ export interface FurnitureItem {
   position: Point;
   rotation: number;
   scale: { x: number; y: number; z: number };
+  elevation?: number;
   // Per-item overrides (optional — falls back to catalog defaults)
   color?: string;
   width?: number;   // cm

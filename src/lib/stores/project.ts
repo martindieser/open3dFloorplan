@@ -209,10 +209,10 @@ export function addWindow(wallId: string, position: number, windowType: import('
   return id;
 }
 
-export function addFurniture(catalogId: string, position: Point): string {
+export function addFurniture(catalogId: string, position: Point, elevation = 0): string {
   const id = uid();
   mutate((f) => {
-    f.furniture.push({ id, catalogId, position, rotation: 0, scale: { x: 1, y: 1, z: 1 } });
+    f.furniture.push({ id, catalogId, position, rotation: 0, scale: { x: 1, y: 1, z: 1 }, elevation });
   }, `Added ${catalogId}`);
   return id;
 }
