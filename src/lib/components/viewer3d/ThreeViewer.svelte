@@ -684,20 +684,21 @@
 
       const intersects = raycaster.intersectObjects(wallGroup.children, true);
       
-      // In preview mode, prioritize furniture selection
+      // In preview mode, prioritize furniture, door, and window selection
       if (previewMode) {
-        let hitFurnitureId: string | null = null;
-        let furnitureData: any = null;
+        let hitId: string | null = null;
+        let hitType: 'furniture' | 'door' | 'window' | null = null;
+        let hitData: any = null;
         
         for (const hit of intersects) {
-          if (hit.object.userData.furnitureId) {
-            hitFurnitureId = hit.object.userData.furnitureId;
-            // Find furniture data in current project
-            const floor = get(activeFloor);
-            const furniture = floor?.furniture.find(f => f.id === hitFurnitureId);
+          const ud = hit.object.userData;
+          if (ud.furnitureId) {
+            hitId = ud.furnitureId;
+            hitType = 'furniture';
+            const furniture = currentFloor?.furniture.find(f => f.id === hitId);
             if (furniture) {
               const cat = getCatalogItem(furniture.catalogId);
-              furnitureData = {
+              hitData = {
                 id: furniture.id,
                 type: 'furniture',
                 properties: {
@@ -714,14 +715,53 @@
               };
             }
             break;
+          } else if (ud.doorId) {
+            hitId = ud.doorId;
+            hitType = 'door';
+            const door = currentFloor?.doors.find(d => d.id === hitId);
+            if (door) {
+              hitData = {
+                id: door.id,
+                type: 'door',
+                properties: {
+                  type: door.type,
+                  width: door.width,
+                  height: door.height,
+                  elevation: door.elevation ?? 0,
+                  swingDirection: door.swingDirection,
+                  flipSide: door.flipSide,
+                  position: door.position,
+                  color: door.color
+                }
+              };
+            }
+            break;
+          } else if (ud.windowId) {
+            hitId = ud.windowId;
+            hitType = 'window';
+            const win = currentFloor?.windows.find(w => w.id === hitId);
+            if (win) {
+              hitData = {
+                id: win.id,
+                type: 'window',
+                properties: {
+                  type: win.type,
+                  width: win.width,
+                  height: win.height,
+                  sillHeight: win.sillHeight,
+                  elevation: win.elevation ?? 0,
+                  position: win.position,
+                  color: win.color
+                }
+              };
+            }
+            break;
           }
         }
         
-        if (hitFurnitureId) {
-          kotlinBridge.notifyObjectSelected(hitFurnitureId, furnitureData);
-          selectedElementId.set(hitFurnitureId);
-          const objColor = furnitureData?.color || furnitureData?.catalogItem?.color || '#666666';
-          highlightObject(hitFurnitureId, objColor, 500);
+        if (hitId && hitData) {
+          kotlinBridge.notifyObjectSelected(hitId, hitData);
+          selectedElementId.set(hitId);
           return;
         }
       }
@@ -1309,13 +1349,14 @@
       const wallElevation = wall.elevation ?? 0;
       const doorElevation = wallElevation + (door.elevation ?? 0);
 
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.6 });
+      const frameMat = new THREE.MeshStandardMaterial({ color: door.color || 0x6b4423, roughness: 0.6 });
       const doorHeight = door.height ?? 210;
       const jamb = 5; // jamb thickness
 
       // Left jamb
       const ljGeo = new THREE.BoxGeometry(jamb, doorHeight, wt + 2);
       const ljMesh = new THREE.Mesh(ljGeo, frameMat);
+      ljMesh.userData.doorId = door.id;
       const ljOffset = -door.width / 2 - jamb / 2;
       ljMesh.position.set(
         px + ljOffset * Math.cos(angle),
@@ -1328,6 +1369,7 @@
 
       // Right jamb
       const rjMesh = new THREE.Mesh(ljGeo, frameMat);
+      rjMesh.userData.doorId = door.id;
       const rjOffset = door.width / 2 + jamb / 2;
       rjMesh.position.set(
         px + rjOffset * Math.cos(angle),
@@ -1341,17 +1383,19 @@
       // Header
       const hGeo = new THREE.BoxGeometry(door.width + jamb * 2, jamb, wt + 2);
       const hMesh = new THREE.Mesh(hGeo, frameMat);
+      hMesh.userData.doorId = door.id;
       hMesh.position.set(px, doorHeight + jamb / 2 + doorElevation, py);
       hMesh.rotation.y = -angle;
       hMesh.castShadow = true;
       wallGroup.add(hMesh);
 
       // Door panel — hinged on left side, slightly ajar (15°)
-      const panelMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.5 });
+      const panelMat = new THREE.MeshStandardMaterial({ color: door.color || 0x8B6914, roughness: 0.5 });
       const panelGeo = new THREE.BoxGeometry(door.width - 2, doorHeight - 4, 4);
       // Shift geometry so pivot is at left edge
       panelGeo.translate(door.width / 2 - 1, 0, 0);
       const panelMesh = new THREE.Mesh(panelGeo, panelMat);
+      panelMesh.userData.doorId = door.id;
       // Position at left jamb inner edge
       const hingeOffset = -door.width / 2;
       const swingAngle = 0.26; // ~15 degrees ajar
@@ -1395,7 +1439,7 @@
       const winElevation = wallElevation + (win.elevation ?? 0);
       const winCY = win.sillHeight + win.height / 2 + winElevation;
 
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.4, metalness: 0.1 });
+      const frameMat = new THREE.MeshStandardMaterial({ color: win.color || 0xe0e0e0, roughness: 0.4, metalness: 0.1 });
       const mullionW = 4; // mullion bar width
 
       // Outer frame — 4 bars forming rectangle
@@ -1412,6 +1456,7 @@
       for (const bar of bars) {
         const geo = new THREE.BoxGeometry(bar.w, bar.h, mullionW);
         const mesh = new THREE.Mesh(geo, frameMat);
+        mesh.userData.windowId = win.id;
         mesh.position.set(
           px + bar.ox * Math.cos(angle),
           winCY + bar.oy,
@@ -1432,6 +1477,7 @@
         for (const qy of [-1, 1]) {
           const gGeo = new THREE.BoxGeometry(halfW, halfH, 1);
           const gMesh = new THREE.Mesh(gGeo, glassMat);
+          gMesh.userData.windowId = win.id;
           const ox = qx * (halfW / 2 + mullionW / 2);
           gMesh.position.set(
             px + ox * Math.cos(angle),
@@ -1446,6 +1492,7 @@
       // Sill — protruding ledge
       const sillGeo = new THREE.BoxGeometry(win.width + 16, 4, wt + 10);
       const sillMesh = new THREE.Mesh(sillGeo, frameMat);
+      sillMesh.userData.windowId = win.id;
       sillMesh.position.set(px, win.sillHeight - 2 + winElevation, py);
       sillMesh.rotation.y = -angle;
       sillMesh.castShadow = true;
@@ -1727,7 +1774,7 @@
     const affectedMeshes: { mesh: THREE.Mesh, originalEmissive: THREE.Color, originalIntensity: number }[] = [];
 
     wallGroup.traverse((obj) => {
-      if (obj instanceof THREE.Mesh && (obj.userData.furnitureId === id || obj.userData.wallId === id)) {
+      if (obj instanceof THREE.Mesh && (obj.userData.furnitureId === id || obj.userData.wallId === id || obj.userData.doorId === id || obj.userData.windowId === id)) {
         const mat = obj.material;
         const materials = Array.isArray(mat) ? mat : [mat];
         
@@ -1916,7 +1963,7 @@
       savedRooms = rooms;
     });
 
-    // Highlight selected wall in 3D
+    // Highlight selected element in 3D (Wall, Furniture, Door, Window)
     // Store original materials so we can restore them (shared materials must not be mutated)
     const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
     const unsubSel = selectedElementId.subscribe((id) => {
@@ -1927,31 +1974,49 @@
       originalMaterials.clear();
       originalEmissive.clear();
       selectedWallId3D = id;
-      if (!id) return;
-      // Highlight matching wall meshes by cloning their materials
-      for (const [mesh, wallId] of wallMeshMap) {
-        if (wallId === id && mesh instanceof THREE.Mesh) {
-          originalMaterials.set(mesh, mesh.material);
-          // Clone materials so we don't mutate shared instances
-          if (Array.isArray(mesh.material)) {
-            mesh.material = mesh.material.map((m: THREE.Material) => {
-              const cloned = m.clone();
-              if (cloned instanceof THREE.MeshStandardMaterial) {
-                cloned.emissive.set(0x3388ff);
-                cloned.emissiveIntensity = 0.3;
-              }
-              return cloned;
-            });
-          } else {
-            const cloned = mesh.material.clone();
-            if (cloned instanceof THREE.MeshStandardMaterial) {
-              cloned.emissive.set(0x3388ff);
-              cloned.emissiveIntensity = 0.3;
+      
+      if (!id || !wallGroup) {
+        markSceneDirty();
+        return;
+      }
+
+      // Traverse the scene to find meshes matching the selected ID
+      wallGroup.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          const ud = obj.userData;
+          const isMatch = ud.wallId === id || ud.furnitureId === id || ud.doorId === id || ud.windowId === id;
+          
+          if (isMatch) {
+            // Save original if not already saved (though clear() was called above)
+            if (!originalMaterials.has(obj)) {
+              originalMaterials.set(obj, obj.material);
             }
-            mesh.material = cloned;
+
+            // Highlight by cloning materials so we don't mutate shared instances
+            const highlightColor = 0x3388ff;
+            const highlightIntensity = 0.3;
+
+            if (Array.isArray(obj.material)) {
+              obj.material = obj.material.map((m: THREE.Material) => {
+                const cloned = m.clone();
+                if (cloned instanceof THREE.MeshStandardMaterial) {
+                  cloned.emissive.set(highlightColor);
+                  cloned.emissiveIntensity = highlightIntensity;
+                }
+                return cloned;
+              });
+            } else {
+              const cloned = obj.material.clone();
+              if (cloned instanceof THREE.MeshStandardMaterial) {
+                cloned.emissive.set(highlightColor);
+                cloned.emissiveIntensity = highlightIntensity;
+              }
+              obj.material = cloned;
+            }
           }
         }
-      }
+      });
+      markSceneDirty();
     });
 
     // Notify Kotlin that the 3D viewer is fully loaded and painted

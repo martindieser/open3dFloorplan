@@ -150,6 +150,14 @@
     if (!selectedWindow) return;
     updateWindow(selectedWindow.id, { sillHeight: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
+  function onDoorColor(color: string) {
+    if (!selectedDoor) return;
+    updateDoor(selectedDoor.id, { color });
+  }
+  function onWindowColor(color: string) {
+    if (!selectedWindow) return;
+    updateWindow(selectedWindow.id, { color });
+  }
 
   // Furniture handlers
   function onFurnitureColor(color: string) {

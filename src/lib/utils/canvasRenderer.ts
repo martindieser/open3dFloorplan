@@ -401,7 +401,7 @@ export function drawDoorOnWall(cs: CanvasState, wall: Wall, door: Door): void {
 
   // Door jamb ticks
   const jamb = thickness / 2 + 2;
-  ctx.strokeStyle = '#444';
+  ctx.strokeStyle = door.color || '#444';
   ctx.lineWidth = 1.5;
   for (const sign of [-1, 1]) {
     const jx = s.x + ux * halfDoor * sign;
@@ -577,7 +577,7 @@ export function drawWindowOnWall(cs: CanvasState, wall: Wall, win: Win): void {
     const sideW = hw * 0.3;
     const centerW = hw - sideW;
 
-    ctx.strokeStyle = '#555';
+    ctx.strokeStyle = win.color || '#555';
     ctx.lineWidth = 1.5;
 
     const lOuter = { x: s.x - ux * hw, y: s.y - uy * hw };
@@ -607,7 +607,7 @@ export function drawWindowOnWall(cs: CanvasState, wall: Wall, win: Win): void {
     ctx.stroke();
 
   } else if (winType === 'sliding') {
-    ctx.strokeStyle = '#555';
+    ctx.strokeStyle = win.color || '#555';
     ctx.lineWidth = 1.5;
     const offset = gap * 0.4;
     ctx.beginPath();
@@ -640,7 +640,7 @@ export function drawWindowOnWall(cs: CanvasState, wall: Wall, win: Win): void {
     ctx.stroke();
 
   } else if (winType === 'fixed') {
-    ctx.strokeStyle = '#555';
+    ctx.strokeStyle = win.color || '#555';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
@@ -659,7 +659,7 @@ export function drawWindowOnWall(cs: CanvasState, wall: Wall, win: Win): void {
     ctx.stroke();
 
   } else if (winType === 'casement') {
-    ctx.strokeStyle = '#555';
+    ctx.strokeStyle = win.color || '#555';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
@@ -690,7 +690,7 @@ export function drawWindowOnWall(cs: CanvasState, wall: Wall, win: Win): void {
 
   } else {
     // Standard
-    ctx.strokeStyle = '#555';
+    ctx.strokeStyle = win.color || '#555';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);

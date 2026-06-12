@@ -39,6 +39,7 @@ export interface Door {
   width: number;
   height: number;
   elevation?: number;
+  color?: string;
   type: 'single' | 'double' | 'sliding' | 'french' | 'pocket' | 'bifold';
   swingDirection: 'left' | 'right';
   flipSide: boolean; // flip which side of wall the door opens to (vertical flip)
@@ -51,6 +52,7 @@ export interface Window {
   width: number;
   height: number;
   sillHeight: number;
+  color?: string;
   type: 'standard' | 'fixed' | 'casement' | 'sliding' | 'bay';
 }
 
